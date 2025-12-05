@@ -1,0 +1,75 @@
+# Ignore macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Ignore Windows system files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Ignore Python files
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.env
+*.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore virtual environment folders
+.venv/
+env/
+venv/
+
+# Ignore IDE and editor files
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Ignore logs and temporary files
+*.log
+*.tmp
+*.swp
+*.swo
+
+# Ignore compiled code
+*.out
+*.class
+*.o
+*.so
+
+# Ignore test coverage files
+.coverage
+*.cover
+.hypothesis/
+
+# Ignore build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+*.manifest
+*.spec
+
+# Ignore other common files
+*.bak
+*.orig
+*.rej
+*.patch
+*.lock
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
