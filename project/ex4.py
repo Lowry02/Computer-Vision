@@ -72,3 +72,14 @@ plt.legend()
 
 plt.tight_layout()
 plt.show()
+
+# =========================================================================
+"""
+Zero STDEV (N=3 to N=6): The zero values for N up to 6 (or the first non-zero point)
+are due to data redundancy caused by numerical instability.
+The calibration requires a minimum of N=3 views (6 constraints). 
+When the estimation fails due to noisy data (i.e., the "Matrix is not positive definite" error) for N=4, 5 and 6, 
+the code employs a fall-back strategy, repeating the first valid estimate (K_3) in the all_K list.
+Since the set of estimates K_3, K_4, K_5, K_6 contains only one unique value K_3, the standard deviation of this set is mathematically zero.
+"""
+# =========================================================================
