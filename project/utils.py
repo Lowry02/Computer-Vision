@@ -130,17 +130,37 @@ def get_intrinsic(V:np.ndarray) -> np.ndarray:
     assert V.ndim == 2, f"V is not a 2D array: ndim {V.ndim}."
     assert V.shape[1] == 6, f"V does not have 6 columns: shape {V.shape}."
     
-    _, _, S = np.linalg.svd(V, full_matrices=False) # fill_matrices = False -> no padding and faster
+    _, _, S = np.linalg.svd(V, full_matrices=False) # full_matrices = False -> no padding and faster
     B = S[-1, :]  # S is transposed so the values of B are in the last row
+
+    # __________ ZHANG PAPER __________
+    B11, B12, B22, B13, B23, B33 = B
+    v0 = (B12 * B13 - B11 * B23) / (B11 * B22 - B12**2)
+    lam = B33 - (B13**2 + v0 * (B12 * B13 - B11 * B23)) / B11
+    # focal lengths
+    alpha = np.sqrt(lam / B11)
+    beta = np.sqrt(lam * B11 / (B11 * B22 - B12**2))
+
+    gamma = -B12 * alpha**2 * beta / lam
+    u0 = gamma * v0 / beta - B13 * alpha**2 / lam
+
+    # intrinsic matrix
+    K = np.array([
+        [alpha, gamma, u0],
+        [0,     beta,  v0],
+        [0,     0,     1 ]
+    ])
+
+    # __________ CHOLESKY __________
     B = np.array([
         B[0], B[1], B[3],
         B[1], B[2], B[4],
         B[3], B[4], B[5]
     ])
-
     L = np.linalg.cholesky(B.reshape(3, 3))
     K = np.linalg.inv(L.transpose())
-    K = K / K[2,2]  # TODO: do we have to divide?
+    K = K / K[2,2]
+    # K[2, 2] = 1.0
     return K
 
 
@@ -172,8 +192,14 @@ def get_extrinsic(K:np.ndarray, H:np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     r1 = lam * K_inv @ H[:, 0]
     r2 = lam * K_inv @ H[:, 1]
     r3 = np.linalg.cross(r1, r2)
-    t = lam * K_inv @ H[:, 2]
+
     R = np.stack([r1,r2,r3]).transpose()
+    # R = np.column_stack((r1, r2, r3))
+
+    U, _, Vt = np.linalg.svd(R) # SVD-based orthonormalization to ensure orthonormal columns and det(R) = +1
+    R = U @ Vt
+
+    t = lam * K_inv @ H[:, 2]
     return R, t
 
 def get_projection_matrix(K: np.ndarray, R: np.ndarray, t: np.ndarray) -> np.ndarray:
@@ -282,7 +308,7 @@ def superimpose_cylinder(
     # Top slice (Z = height)
     x_top = center_x + radius * np.cos(theta)
     y_top = center_y + radius * np.sin(theta)
-    top_points = np.stack([x_top, y_top, np.full_like(x_top, -height), np.ones_like(x_top)], axis=1)    # TODO: Z axis is inverted
+    top_points = np.stack([x_top, y_top, np.full_like(x_top, height), np.ones_like(x_top)], axis=1)    # TODO: Z axis is inverted
     points_3d.append(top_points)
     
     object_points = np.concatenate(points_3d, axis=0) # shape (N, 4)
