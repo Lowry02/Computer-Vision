@@ -10,7 +10,7 @@ The **camera calibration problem** consists in estimating the intrinsic and extr
 The outcome of these calculations is the **Perspective Projection Matrix** \( P \), which can be written as:
 
 \[
-P = K [R \mid t]
+P = K [R | t]
 \]
 
 Here:
@@ -20,7 +20,7 @@ Here:
 Once that these parameters are found, many computer vision tasks can be performed, such as **Triangulation**, **Structure from motion**, **Camera pose**, **Stereoscopy** and many other things that have become more and more popular and usefull nowadays.
 
 ### Task 1 - Zhang's Calibration method 
-It is required to calibrate (so to find the unique K and a pair [R|t] for each image) using the Zhang's procedure, which is based on a key principle: instead of requiring a single image of many non-coplanar points (as is necessary for Direct Linear Transform, or DLT, methods), Zhang's approach utilizes multiple images (at least three) of a simple planar calibration pattern.
+It is required to calibrate (so to find the unique K and a pair [R | t] for each image) using the Zhang's procedure, which is based on a key principle: instead of requiring a single image of many non-coplanar points (as is necessary for Direct Linear Transform, or DLT, methods), Zhang's approach utilizes multiple images (at least three) of a simple planar calibration pattern.
 In our case we are provided with 81 images of a checkboard, each image is taken from a different point in the World reference frame. 
 The foundation of Zhang's method relies on establishing a mathematical relationship, known as a **homography** (H), between the known 3D plane in the scene and its 2D perspective projection onto the image plane.
 First of all, we import **numpy** and **OpenCV** libraries to our code: 
@@ -43,31 +43,6 @@ This function is then called inside another function we wrote to compute the hom
 
 ```python
   def get_homography(img_path:str, grid_size, square_size) -> tuple[np.ndarray, np.ndarray]:
-    """
-    Computes the homography matrix for a checkerboard pattern in an image.
-    This function reads an image containing a checkerboard pattern, detects the corners of the pattern,
-    and computes the homography matrix that maps the 2D grid coordinates of the checkerboard to the 
-    pixel coordinates in the image.
-    Args:
-        img_path (str): Path to the image file containing the checkerboard pattern.
-        grid_size (tuple, optional): Dimensions of the checkerboard grid as (columns, rows). 
-            Default is (8, 11).
-        square_size (int, optional): Size of each square in the checkerboard grid, in millimeters. 
-            Default is 11.
-    Returns:
-        tuple: A tuple containing:
-            - A (np.ndarray): The matrix of linear equations used to compute the homography.
-            - H (np.ndarray): The computed 3x3 homography matrix.
-    Raises:
-        AssertionError: If `img_path` is not a string, `grid_size` is not a tuple, `square_size` 
-            is not an integer, or `grid_size` does not have exactly two elements.
-        Exception: If the checkerboard pattern is not found in the image.
-    Notes:
-        - The function assumes that the checkerboard pattern is visible in the image and that the 
-            grid dimensions are correctly specified.
-        - The homography matrix is computed using Singular Value Decomposition (SVD) of the matrix 
-            of linear equations derived from the corner correspondences.
-    """
     
     assert isinstance(img_path, str), f"img_path is not a string: type {type(img_path)}."
     assert isinstance(grid_size, tuple), f"grid_size is not a tuple: type {type(grid_size)}."
@@ -131,33 +106,11 @@ Another function, called "get_v_vector", is used to compute the constraints vect
     ])
 ```
 
-After that, we wrote other two functions, respectively "get_intrinsic" and "get_extrinsic", which will compute the both K and the pair [R|t].
+After that, we wrote other two functions, respectively "get_intrinsic" and "get_extrinsic", which will compute the both K and the pair [R | t].
 The first one computes the Singular Value Decomposition (SVD) of the constraints matrix V (in which are stacked 2n x 6 equations, given n planes), then extracts from it the smallest singular vector which will be the solution to the problem. Later on, it performs Cholesky decomposition, finally finding K matrix.
 
 ```python
   def get_intrinsic(V:np.ndarray) -> np.ndarray:
-    """
-    Computes the intrinsic camera matrix K from the input matrix V.
-    This function performs the following steps:
-    1. Computes the Singular Value Decomposition (SVD) of the input matrix V.
-    2. Extracts the last row of the transposed S matrix (smallest singular vector),
-        which corresponds to the solution of the homogeneous system.
-    3. Constructs the symmetric matrix B from the extracted vector.
-    4. Performs a Cholesky decomposition of B to obtain a lower triangular matrix L.
-    5. Computes the intrinsic matrix K as the inverse of the transpose of L.
-    6. Normalizes K such that K[2, 2] equals 1.
-    Args:
-        V (np.ndarray): Input matrix, typically derived from a set of constraints
-                        on the camera calibration parameters.
-    Returns:
-        np.ndarray: The intrinsic camera matrix K, a 3x3 upper triangular matrix.
-    Notes:
-        - The normalization step ensures that the intrinsic matrix K is scaled
-            appropriately. The necessity of this step may depend on the specific
-            application.
-        - The input matrix V is expected to be structured such that the smallest
-            singular vector corresponds to the desired solution.
-    """
     
     assert isinstance(V, np.ndarray), f"V is not a numpy array: type {type(V)}."
     assert V.ndim == 2, f"V is not a 2D array: ndim {V.ndim}."
@@ -197,26 +150,10 @@ The first one computes the Singular Value Decomposition (SVD) of the constraints
     return K
 ```
 
-The latter computes column-wise the rotation matrix R and t, starting from the fact that P = [R | t] = K[r1 r2 r3 | t].
+The latter computes column-wise the rotation matrix R and t, starting from the fact that P = [R | t] = K [r1 r2 r3 | t].
 
 ```python
 def get_extrinsic(K:np.ndarray, H:np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """
-    Computes the extrinsic parameters (rotation matrix R and translation vector t) 
-    from the intrinsic matrix K and homography matrix H.
-    Parameters:
-    -----------
-    K : np.ndarray
-        The intrinsic camera matrix of shape (3, 3).
-    H : np.ndarray
-        The homography matrix of shape (3, 3).
-    Returns:
-    --------
-    R : np.ndarray
-        The rotation matrix of shape (3, 3).
-    t : np.ndarray
-        The translation vector of shape (3,).
-    """
     
     assert isinstance(K, np.ndarray), f"K is not a numpy array: type {type(K)}."
     assert K.shape == (3, 3), f"K does not have shape (3, 3): shape {K.shape}."
