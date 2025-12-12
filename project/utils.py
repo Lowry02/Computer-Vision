@@ -189,6 +189,12 @@ def get_extrinsic(K:np.ndarray, H:np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     
     K_inv = np.linalg.inv(K)
     lam = 1 / np.linalg.norm(K_inv @ H[:, 0])
+    
+    t = lam * K_inv @ H[:, 2]
+    if t[2] < 0:
+        t = -t
+        lam = -lam
+
     r1 = lam * K_inv @ H[:, 0]
     r2 = lam * K_inv @ H[:, 1]
     r3 = np.linalg.cross(r1, r2)
@@ -199,7 +205,6 @@ def get_extrinsic(K:np.ndarray, H:np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     U, _, Vt = np.linalg.svd(R) # SVD-based orthonormalization to ensure orthonormal columns and det(R) = +1
     R = U @ Vt
 
-    t = lam * K_inv @ H[:, 2]
     return R, t
 
 def get_projection_matrix(K: np.ndarray, R: np.ndarray, t: np.ndarray) -> np.ndarray:
