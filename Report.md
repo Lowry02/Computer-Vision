@@ -9,9 +9,7 @@
 The **camera calibration problem** consists in estimating the intrinsic and extrinsic parameters of a camera through several measurements.  
 The outcome of these calculations is the **Perspective Projection Matrix** \( P \), which can be written as:
 
-\[
-P = K [R | t]
-\]
+P = K [ R | t ]
 
 Here:
 
@@ -316,6 +314,7 @@ print(f"Mean error per corner: {error/len(corners):.2f}")
 The results we got were the following: 
   -  Error: 30.01
   -  Mean error per corner: 0.34
+
 The second one is the most interesting: a value of 0.34 means that, on average, the points that the geometric model predicts are located on the image are about a third of a pixel away from their actual position in the image. This is considered a good result overall, meaning that the camera model is geometrically accurate.
 
 To show the projected corners, the code below is executed: 
