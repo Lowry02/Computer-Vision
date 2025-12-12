@@ -132,7 +132,8 @@ def get_intrinsic(V:np.ndarray) -> np.ndarray:
     
     _, _, S = np.linalg.svd(V, full_matrices=False) # full_matrices = False -> no padding and faster
     B = S[-1, :]  # S is transposed so the values of B are in the last row
-
+    B /= B[-1]
+    
     # __________ CHOLESKY __________
     B = np.array([
         B[0], B[1], B[3],
