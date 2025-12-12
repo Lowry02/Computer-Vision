@@ -133,24 +133,6 @@ def get_intrinsic(V:np.ndarray) -> np.ndarray:
     _, _, S = np.linalg.svd(V, full_matrices=False) # full_matrices = False -> no padding and faster
     B = S[-1, :]  # S is transposed so the values of B are in the last row
 
-    # __________ ZHANG PAPER __________
-    B11, B12, B22, B13, B23, B33 = B
-    v0 = (B12 * B13 - B11 * B23) / (B11 * B22 - B12**2)
-    lam = B33 - (B13**2 + v0 * (B12 * B13 - B11 * B23)) / B11
-    # focal lengths
-    alpha = np.sqrt(lam / B11)
-    beta = np.sqrt(lam * B11 / (B11 * B22 - B12**2))
-
-    gamma = -B12 * alpha**2 * beta / lam
-    u0 = gamma * v0 / beta - B13 * alpha**2 / lam
-
-    # intrinsic matrix
-    K = np.array([
-        [alpha, gamma, u0],
-        [0,     beta,  v0],
-        [0,     0,     1 ]
-    ])
-
     # __________ CHOLESKY __________
     B = np.array([
         B[0], B[1], B[3],
