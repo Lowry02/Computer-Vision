@@ -108,7 +108,7 @@ After that, we wrote other two functions, respectively "get_intrinsic" and "get_
 The first one computes the Singular Value Decomposition (SVD) of the constraints matrix V (in which are stacked 2n x 6 equations, given n planes), then extracts from it the smallest singular vector which will be the solution to the problem. Later on, it performs Cholesky decomposition, finally finding K matrix.
 
 ```python
-  def get_intrinsic(V:np.ndarray) -> np.ndarray:
+def get_intrinsic(V:np.ndarray) -> np.ndarray:
     
     assert isinstance(V, np.ndarray), f"V is not a numpy array: type {type(V)}."
     assert V.ndim == 2, f"V is not a 2D array: ndim {V.ndim}."
@@ -116,25 +116,8 @@ The first one computes the Singular Value Decomposition (SVD) of the constraints
     
     _, _, S = np.linalg.svd(V, full_matrices=False) # full_matrices = False -> no padding and faster
     B = S[-1, :]  # S is transposed so the values of B are in the last row
-
-    # __________ ZHANG PAPER __________
-    B11, B12, B22, B13, B23, B33 = B
-    v0 = (B12 * B13 - B11 * B23) / (B11 * B22 - B12**2)
-    lam = B33 - (B13**2 + v0 * (B12 * B13 - B11 * B23)) / B11
-    # focal lengths
-    alpha = np.sqrt(lam / B11)
-    beta = np.sqrt(lam * B11 / (B11 * B22 - B12**2))
-
-    gamma = -B12 * alpha**2 * beta / lam
-    u0 = gamma * v0 / beta - B13 * alpha**2 / lam
-
-    # intrinsic matrix
-    K = np.array([
-        [alpha, gamma, u0],
-        [0,     beta,  v0],
-        [0,     0,     1 ]
-    ])
-
+    B /= B[-1]
+    
     # __________ CHOLESKY __________
     B = np.array([
         B[0], B[1], B[3],
@@ -314,6 +297,7 @@ print(f"Mean error per corner: {error/len(corners):.2f}")
 The results we got were the following: 
   -  Error: 30.01
   -  Mean error per corner: 0.34
+
 
 The second one is the most interesting: a value of 0.34 means that, on average, the points that the geometric model predicts are located on the image are about a third of a pixel away from their actual position in the image. This is considered a good result overall, meaning that the camera model is geometrically accurate.
 
