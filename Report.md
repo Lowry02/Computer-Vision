@@ -294,12 +294,26 @@ print(f"Error: {error:.2f}")
 print(f"Mean error per corner: {error/len(corners):.2f}")
 
 ```
-The results we got were the following: 
-  -  Error: 30.01
-  -  Mean error per corner: 0.34
+The results we got for image 0 were the following: 
+  -  Error: 31.35
+  -  Mean error per corner: 0.36
+
+<div style="
+  width: 100%;
+  text-align: center;
+  margin: 2em 0 3em 0;
+">
+  <img src="imgs_for_CV_project/red_dots.png"
+       alt="Chessboard calibration pattern"
+       style="display: block; margin: 0 auto; width: 800px;">
+  <div style="margin-top: 0.8em; font-style: italic;">
+    Figure 1: Projected corners after calibration.
+  </div>
+</div>
 
 
-The second one is the most interesting: a value of 0.34 means that, on average, the points that the geometric model predicts are located on the image are about a third of a pixel away from their actual position in the image. This is considered a good result overall, meaning that the camera model is geometrically accurate.
+
+The second data is the most interesting: a value of 0.36 means that, on average, the points that the geometric model predicts are located on the image are about a third of a pixel away from their actual position in the image. This is considered a good result overall, meaning that the camera model is geometrically accurate.
 
 To show the projected corners, the code below is executed: 
 
@@ -448,4 +462,259 @@ for i in images_indices:
     
 px.imshow(superimposed_image_list[0])
 ```
+
+<div style="
+  width: 50%;
+  text-align: center;
+  margin: 2em 0 3em 0;
+">
+  <img src="imgs_for_CV_project/cylinder.png"
+       alt="Example of superimposed cylinder"
+       style="display: block; margin: 0 auto; width: 800px;">
+  <div style="margin-top: 0.8em; font-style: italic;">
+    Figure 2: Example of superimposed cylinder.
+  </div>
+</div>
+
+### Task 4 - Standard deviation of principal point 
+In this exercize it is requested to plot the standard deviation of the entries u_0 and v_0 of calibration matrix K as a function of the images processed to compute the intrinsics parameters. The minimum number of planes required to compute K is 3; and for some combination of images the matrix K could be not positive definite, so not feasable for computations (Cholesky). In the following code, for each number of images, multiple random subsets are sampled and used to compute the intrinsic matrix. The standard deviation of the principal point coordinates (u_0 and v_0) across samples is then computed and plotted, showing how the estimation variance decreases as more images are used. As we can see, as soon as the image group consists of only 6-7 elements, the standard deviation is minimal.
+
+```python
+random.seed(0)
+max_N_images = 20
+N_images = list(range(3, max_N_images + 1))
+n_samples = 100
+
+# since V is a stack of two equations per image,
+# I can use them to compute K instead of recomputing V each time
+index_to_select = list(range(0, len(V), 2))
+
+u0_std = []
+v0_std = []
+
+for n_images in range(3, max_N_images + 1):
+    current_sample = 1
+    principal_point_coord = []
+    while current_sample <= n_samples:
+        selected_images = np.array(random.sample(index_to_select, n_images))
+        _V = np.concatenate([V[selected_images], V[selected_images + 1]])
+
+        # some matrices could be not positive definite -> no solution
+        try:
+            K = u.get_intrinsic(np.array(_V))
+        except:
+            continue
+        
+        principal_point_coord.append([K[0,2], K[1,2]])
+        current_sample += 1
+    
+    principal_point_coord = np.stack(principal_point_coord)
+    _u0_std, _v0_std = principal_point_coord.std(axis=0)
+    u0_std.append(_u0_std.item())
+    v0_std.append(_v0_std.item())
+    
+plt.figure(figsize=(10, 6))
+plt.plot(N_images, u0_std, marker='o', label='u_0_std')
+plt.plot(N_images, v0_std, marker='o', label='v_0_std')
+plt.xlabel('Number of Images')
+plt.ylabel('Standard Deviation')
+plt.title('Standard Deviation vs Number of Images')
+plt.grid(True)
+plt.legend()
+plt.show()
+```
+
+<div style="
+  width: 50%;
+  text-align: center;
+  margin: 2em 0 3em 0;
+">
+  <img src="imgs_for_CV_project/stdv.png"
+       alt="Stvd vs Num IMgs"
+       style="display: block; margin: 0 auto; width: 800px;">
+  <div style="margin-top: 0.8em; font-style: italic;">
+    Figure 3: Standard deviation vs number of images.
+  </div>
+</div>
+
+### Task 5 - Comparing the estimated R,t pairs
+
+In this task it is requested to compare the extrinsics parameter previously got with the ones given by Professor, by computing the rotation matrix from frame <b>A</b> to frame <b>B</b> and the norm of the  corresponding angle of rotation:
+
+```python
+R_errors = []
+t_errors = []
+
+for i, pose in enumerate(poses_path[:5]):
+    with open(pose, 'r') as file:
+        data = yaml.safe_load(file)
+        R = all_R[i]
+        t = all_t[i]
+        R_CS = np.array(data["R_CS"]).reshape(3,3)
+        t_CS = np.array(data["T_CS"])
+        
+        print(t_CS, t / np.linalg.norm(t))
+        
+        R_AB = R_CS @ R.T
+        R_errors.append(np.absolute(np.arccos((np.trace(R_AB) - 1) / 2)))
+        t_errors.append(np.mean((t - np.array(t_CS))**2))
+        
+# Boxplot for R_errors
+plt.figure(figsize=(10, 6))
+plt.boxplot(R_errors, tick_labels=['R_errors'])
+plt.ylabel('Error (Grad)')
+plt.title('R Errors')
+plt.grid(True)
+plt.show()
+
+# Boxplot for t_errors
+plt.figure(figsize=(10, 6))
+plt.boxplot(t_errors, tick_labels=['t_errors'])
+plt.ylabel('Error')
+plt.title('t Errors')
+plt.grid(True)
+plt.show()
+```
+
+<div style="display: flex; justify-content: center; align-items: flex-start; gap: 20px; background-color: #0d1117; padding: 2em; border-radius: 8px;">
+
+  <div style="flex: 1; max-width: 400px; text-align: left;">
+    <img src="imgs_for_CV_project/R_errors.png" 
+         alt="R errors" 
+         style="width: 50%; height: auto; display: block; border-radius: 2px;">
+    <div style="color: white; margin-top: 10px; font-family: sans-serif; font-size: 0.95em;">
+      Figure 4: R errors boxplot.
+    </div>
+  </div>
+
+  <div style="flex: 1; max-width: 400px; text-align: left;">
+    <img src="imgs_for_CV_project/t_errors.png" 
+         alt="t errors" 
+         style="width: 50%; height: auto; display: block; border-radius: 2px;">
+    <div style="color: white; margin-top: 10px; font-family: sans-serif; font-size: 0.95em;">
+      Figure 5: t errors boxplot.
+    </div>
+  </div>
+
+</div>
+
+</div>
+
+
+# TODO: discutere i risultati 
+
+### Task 6 - Our own calibration 
+Point 6 requires to print a checkboard, take several images of it and estimate the parameters of our own camera.
+We took 30 HD images of a (11,18) checkerboard with a Google Pixel smartphone and followed the exact same path of the previous tasks. Of course we can't conclude much investigating extrinsics parameters, but we can observe that the calibration matrix K in almost every entry has higher values than the given one. 
+Moreover, by estimating the **Total Reprojection Error**, over image 0 we get a **mean error per corner** of 0.81, which is consistent with the model previously tested. 
+To assess such thing we decided to rescale the pictures taken from us (1600x1200) into the shape of those given by professor (1280x720). Doing so, we could compare the results and confirm that the model works well, because the **total mean error per corner** for our pictures is **1.21**, while for Professor's images is **1.12**. 
+
+The code used, which does the scaling before the same actions performed by task 2 over all images, is the following: 
+```python
+old_w, old_h = 1600, 1200
+new_w, new_h = 1280, 720
+sx = new_w / old_w
+sy = new_h / old_h
+
+K_scaled = K.copy()
+K_scaled[0, 0] *= sx  # fx
+K_scaled[1, 1] *= sy  # fy
+K_scaled[0, 2] *= sx  # u0
+K_scaled[1, 2] *= sy  # v0
+
+viz_img_index = 0 
+projected_corners_viz = []
+image_to_show = None
+total_sum_error = 0.0
+
+for i in range(len(all_H)):
+    img_path = images_path[i]
+    P = u.get_projection_matrix(K_scaled, all_R[i], all_t[i])
+
+    try:
+        corners_orig = u.get_corners(img_path, grid_size)
+    except Exception:
+        continue
+
+    grid_size_cv2 = tuple(reversed(grid_size))
+    
+    for index, corner in enumerate(corners_orig):
+
+        u_coord = corner[0] * sx 
+        v_coord = corner[1] * sy
+        
+        u_index, v_index = np.unravel_index(index, grid_size_cv2)
+        point_m = np.array([u_index * square_size, v_index * square_size, 0, 1])
+
+        projected_u, projected_v = u.project(point_m, P)[0]
+        
+        error += (projected_u - u_coord)**2 + (projected_v - v_coord)**2
+        total_corners_count += 1
+
+        if i == viz_img_index:
+            projected_corners_viz.append((projected_u, projected_v))
+
+
+if total_corners_count > 0:
+    print(f"Total error (all images): {error:.2f}")
+    print(f"Mean error per corner (total): {error/total_corners_count:.4f}")
+
+
+raw_img = cv2.imread(images_path[viz_img_index])
+# Important: the image must be resized to match K_scaled and the points.
+img_resized = cv2.resize(raw_img, (new_w, new_h))
+image_rgb = cv2.cvtColor(img_resized, cv2.COLOR_BGR2RGB)
+
+for cp in projected_corners_viz:
+    cv2.circle(image_rgb, (int(cp[0]), int(cp[1])), radius=3, color=(255, 0, 0), thickness=-1)
+
+px.imshow(image_rgb)
+```
+
+<div style="
+  width: 50%;
+  text-align: center;
+  margin: 2em 0 3em 0;
+">
+  <img src="imgs_for_CV_project/new_red_dot.png"
+       alt="Ex6_red_dots"
+       style="display: block; margin: 0 auto; width: 800px;">
+  <div style="margin-top: 0.8em; font-style: italic;">
+    Figure 6: Projected corners after rescaling and calibration.
+  </div>
+</div>
+
+
+Then it comes to superimposing the cylinder to our own chessboard: 
+
+
+<div style="
+  width: 50%;
+  text-align: center;
+  margin: 2em 0 3em 0;
+">
+  <img src="imgs_for_CV_project/newplot.png"
+       alt="Cylinder_6"
+       style="display: block; margin: 0 auto; width: 800px;">
+  <div style="margin-top: 0.8em; font-style: italic;">
+    Figure 7: Superimposed cylinder on our chessboard.
+  </div>
+</div>
+
+Later on, the standard deviation of the entries u_0 and v_0 of calibration matrix K as a function of the images processed:
+
+<div style="
+  width: 50%;
+  text-align: center;
+  margin: 2em 0 3em 0;
+">
+  <img src="imgs_for_CV_project/output.png"
+       alt="STDV"
+       style="display: block; margin: 0 auto; width: 800px;">
+  <div style="margin-top: 0.8em; font-style: italic;">
+    Figure 8: Standard Deviation of u_0 and v_0 vs number of images processed.
+  </div>
+</div>
+
+Notice that task 5 is not reported since comparing the estimates taken by Professor with ours is meaningless.
 
