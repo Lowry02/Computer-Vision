@@ -294,9 +294,9 @@ print(f"Error: {error:.2f}")
 print(f"Mean error per corner: {error/len(corners):.2f}")
 
 ```
-The results we got were the following: 
-  -  Error: 30.01
-  -  Mean error per corner: 0.34
+The results we got for image 0 were the following: 
+  -  Error: 31.35
+  -  Mean error per corner: 0.36
 
 <div style="
   width: 100%;
@@ -313,7 +313,7 @@ The results we got were the following:
 
 
 
-The second one is the most interesting: a value of 0.34 means that, on average, the points that the geometric model predicts are located on the image are about a third of a pixel away from their actual position in the image. This is considered a good result overall, meaning that the camera model is geometrically accurate.
+The second data is the most interesting: a value of 0.36 means that, on average, the points that the geometric model predicts are located on the image are about a third of a pixel away from their actual position in the image. This is considered a good result overall, meaning that the camera model is geometrically accurate.
 
 To show the projected corners, the code below is executed: 
 
@@ -600,4 +600,56 @@ plt.show()
 
 </div>
 
+
 # TODO: discutere i risultati 
+
+### Task 6 - Our own calibration 
+Point 6 requires to print a checkboard, take several images of it and estimate the parameters of our own camera.
+We took 30 HD images of a (11,18) checkerboard with a Google Pixel smartphone and followed the exact same path of the previous tasks. Of course we can't conclude much investigating extrinsics parameters, but we can observe that the calibration matrix K in almost every entry has higher values than the given one. 
+Moreover, by estimating the **Total Reprojection Error**, over image 0 we get a **mean error per corner** of 0.81, which is consistent with the model previously tested, but over all the pictures taken the mean error is 1.55 pixels, against the mean error over all the images of 1.12 got in task 2.
+
+<div style="
+  width: 50%;
+  text-align: center;
+  margin: 2em 0 3em 0;
+">
+  <img src="imgs_for_CV_project/red_d2_6.png"
+       alt="Ex6_red_dots"
+       style="display: block; margin: 0 auto; width: 800px;">
+  <div style="margin-top: 0.8em; font-style: italic;">
+    Figure 6: Projected corners after calibration.
+  </div>
+</div>
+
+Then it comes to superimposing the cylinder to our own chessboard: 
+
+<div style="
+  width: 50%;
+  text-align: center;
+  margin: 2em 0 3em 0;
+">
+  <img src="imgs_for_CV_project/newplot.png"
+       alt="Cylinder_6"
+       style="display: block; margin: 0 auto; width: 800px;">
+  <div style="margin-top: 0.8em; font-style: italic;">
+    Figure 7: Superimposed cylinder on our chessboard.
+  </div>
+</div>
+
+Later on, the standard deviation of the entries u_0 and v_0 of calibration matrix K as a function of the images processed:
+
+<div style="
+  width: 50%;
+  text-align: center;
+  margin: 2em 0 3em 0;
+">
+  <img src="imgs_for_CV_project/output.png"
+       alt="STDV"
+       style="display: block; margin: 0 auto; width: 800px;">
+  <div style="margin-top: 0.8em; font-style: italic;">
+    Figure 8: Standard Deviation of u_0 and v_0 vs number of images processed.
+  </div>
+</div>
+
+Notice that task 5 is not reported since comparing the estimates taken by Professor with ours is meaningless.
+
