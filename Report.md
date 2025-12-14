@@ -539,7 +539,8 @@ plt.show()
 
 ### Task 5 - Comparing the estimated R,t pairs
 
-In this task it is requested to compare the extrinsics parameter previously got with the ones given by Professor, by computing the rotation matrix from frame <b>A</b> to frame <b>B</b> and the norm of the  corresponding angle of rotation:
+In this task it is requested to compare the extrinsics parameter previously got with the ones given by Professor, by computing the rotation matrix from frame <b>A</b> to frame <b>B</b> and the norm of the  corresponding angle of rotation. 
+Notice that, since **.yaml** files are scaled in **meters**, while ours in **millimeters**, we needed to multiply by a factor of 1000 the t vector:
 
 ```python
 R_errors = []
@@ -551,18 +552,16 @@ for i, pose in enumerate(poses_path[:5]):
         R = all_R[i]
         t = all_t[i]
         R_CS = np.array(data["R_CS"]).reshape(3,3)
-        t_CS = np.array(data["T_CS"])
-        
-        print(t_CS, t / np.linalg.norm(t))
+        t_CS = np.array(data["T_CS"]) * 1000    # in our code we consider millimiters, in yaml file meters
         
         R_AB = R_CS @ R.T
         R_errors.append(np.absolute(np.arccos((np.trace(R_AB) - 1) / 2)))
-        t_errors.append(np.mean((t - np.array(t_CS))**2))
+        t_errors.append(np.linalg.norm(t - t_CS))
         
 # Boxplot for R_errors
 plt.figure(figsize=(10, 6))
 plt.boxplot(R_errors, tick_labels=['R_errors'])
-plt.ylabel('Error (Grad)')
+plt.ylabel('Error - Angle in radians')
 plt.title('R Errors')
 plt.grid(True)
 plt.show()
@@ -570,7 +569,7 @@ plt.show()
 # Boxplot for t_errors
 plt.figure(figsize=(10, 6))
 plt.boxplot(t_errors, tick_labels=['t_errors'])
-plt.ylabel('Error')
+plt.ylabel('Error - Euclidean Distance')
 plt.title('t Errors')
 plt.grid(True)
 plt.show()
@@ -588,7 +587,7 @@ plt.show()
   </div>
 
   <div style="flex: 1; max-width: 400px; text-align: left;">
-    <img src="imgs_for_CV_project/t_errors.png" 
+    <img src="imgs_for_CV_project/t_errors_good.png" 
          alt="t errors" 
          style="width: 50%; height: auto; display: block; border-radius: 2px;">
     <div style="color: white; margin-top: 10px; font-family: sans-serif; font-size: 0.95em;">
@@ -600,7 +599,10 @@ plt.show()
 
 </div>
 
-
+Analyzing the boxplots, we can conclude some observations:
+  -  Rotation (R Errors): The boxplot shows a very high, yet extremely stable, error centered around 3.13 radians. This value is approximately equal to $\pi$, indicating a systematic 180° rotation. This suggests a consistent difference in coordinate system conventions (e.g., the direction of the Z-axis) between the two models rather than a failure in the calibration itself.
+  -  Translation (t Errors): The translation error fluctuates between 7.5 mm and 12.2 mm, with a median near 11 mm. This indicates a metric discrepancy likely caused by slight variations in the estimation of the camera's distance from the board or a minor scale difference in the *square_size* parameter.
+  -  Stability: Both plots exhibit relatively small "whiskers," which implies that the calibration algorithm is robust and consistent across different images, despite the fixed orientation bias.
 # TODO: discutere i risultati 
 
 ### Task 6 - Our own calibration 
