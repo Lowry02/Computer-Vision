@@ -168,7 +168,7 @@ Here later on the realization of the project, we had to add this portion of code
         t = -t
         lam = -lam
 ```
-This had to be done because there exists two possible solutions to the problem when computing extrinsics, but only one has the right physical meaning: in fact, being the checkerboard in front of the camera, we expect the value of t_z to be positive (since we defined the camera reference frame this way, with Z > 0), but sometimes this was not true, and in the superimposition task we observed that for some images, the value wass negative and the cylinder was entering the frame rather that getting out; this corresponded to the WRF to be considered behind the camera, which is clearly unfeasable. So, we are able to detect the wrong solution by checking this value and correct it taking the opposite, which means taking the opposite scale factor **lambda**. 
+This had to be done because there exists two possible solutions to the problem when computing extrinsics, but only one has the right physical meaning: in fact, being the checkerboard in front of the camera, we expect the value of t_z to be positive (since we defined the camera reference frame this way, with Z > 0), but sometimes this was not true, and in the superimposition task we observed that for some images, the value was negative and the cylinder was entering the frame rather that getting out; this corresponded to the WRF to be considered behind the camera, which is clearly unfeasable. So, we are able to detect the wrong solution by checking this value and correct it taking the opposite, which means taking the opposite scale factor **lambda**. 
 
 Now that we have everything required, the following execution code is shown. 
 Here we process all the checkerboards we are provided with: 
@@ -295,8 +295,8 @@ print(f"Mean error per corner: {error/len(corners):.2f}")
 
 ```
 The results we got for image 0 were the following: 
-  -  Error: 31.35
-  -  Mean error per corner: 0.36
+  -  Error: 23.09
+  -  Mean error per corner: 0.26
 
 <div style="
   width: 100%;
@@ -313,7 +313,7 @@ The results we got for image 0 were the following:
 
 
 
-The second data is the most interesting: a value of 0.36 means that, on average, the points that the geometric model predicts are located on the image are about a third of a pixel away from their actual position in the image. This is considered a good result overall, meaning that the camera model is geometrically accurate.
+The second data is the most interesting: a value of 0.26 means that, on average, the points that the geometric model predicts are located on the image are about a quarter of a pixel away from their actual position in the image. This is considered a good result overall, meaning that the camera model is geometrically accurate.
 
 To show the projected corners, the code below is executed: 
 
@@ -718,3 +718,175 @@ Later on, the standard deviation of the entries u_0 and v_0 of calibration matri
 
 Notice that task 5 is not reported since comparing the estimates taken by Professor with ours is meaningless.
 
+### Task 7 - Minimize reprojection error 
+In this exercize it is asked to minimize the reprojection error instead of the algebrain one using **Maximum Likelihood** Estimation approach, suggested in Section 3.2 of Zhang, 2002. 
+The following code refines both intrinsic and extrinsic camera parameters by minimizing the reprojection error of checkerboard corners.  
+The 3D coordinates of the checkerboard corners are first defined in the WRF, while the corresponding 2D image points are extracted from all calibration images.  
+A non-linear least-squares optimization based on the Levenberg–Marquardt algorithm is then applied to jointly optimize the camera intrinsics, rotations (parameterized using axis–angle representation), and translations. To achieve this goal, first we had to define the function **compute_residuals** to compute the residuals between the projected checkerboard corners and the observed image corners.
+```python
+
+def compute_resiudals(params: np.ndarray, checkerboard_world_corners: np.ndarray, checkerboard_image_corners: np.ndarray):
+     
+    assert isinstance(params, np.ndarray), f"params is not a numpy array: type {type(params)}."
+    assert params.ndim == 1, f"params is not a 1D array: ndim {params.ndim}."
+    assert isinstance(checkerboard_world_corners, np.ndarray), f"checkerboard_world_corners is not a numpy array: type {type(checkerboard_world_corners)}."
+    assert checkerboard_world_corners.ndim == 2 and checkerboard_world_corners.shape[1] == 4, f"checkerboard_world_corners must have shape (n_points, 4): shape {checkerboard_world_corners.shape}."
+    assert isinstance(checkerboard_image_corners, np.ndarray), f"checkerboard_image_corners is not a numpy array: type {type(checkerboard_image_corners)}."
+    assert checkerboard_image_corners.ndim == 3 and checkerboard_image_corners.shape[2] == 2, f"checkerboard_image_corners must have shape (n_images, n_points, 2): shape {checkerboard_image_corners.shape}."
+    
+    n_images = (len(params) - 5) // 3 // 2
+    alpha_u, skew, u_0, alpha_v, v_0 = params[:5]
+    K = np.stack([
+        [alpha_u, skew, u_0],
+        [0, alpha_v, v_0],
+        [0, 0, 1],
+    ])
+        
+    r = np.array(params[5:(5 + (n_images * 3))]).reshape(-1, 3)
+    t = np.array(params[-(n_images * 3):]).reshape(-1, 3)
+
+    R = np.stack([get_R_from_axis(r[i]) for i in range(n_images)])
+    P = np.stack([get_projection_matrix(K, R[i], t[i]) for i in range(n_images)])
+    
+    projected_points = P @ checkerboard_world_corners.T
+    projected_points = np.stack([projected_points[:, 0] / projected_points[:, 2], projected_points[:, 1] / projected_points[:, 2]], axis=2)
+    
+    residuals = projected_points - checkerboard_image_corners
+    return residuals.ravel()
+```
+Then, following the Rodrigues formula (https://en.wikipedia.org/wiki/Axis%E2%80%93angle_representation), we executed the following:
+```python
+
+checkerboard_world_corners = []
+for i in range(grid_size[0] * grid_size[1]):
+    grid_size_cv2 = tuple(reversed(grid_size)) 
+    u_index, v_index = np.unravel_index(i, grid_size_cv2)
+        
+    # finding the (x,y) coordinates wrt the checkerboard
+    x_mm = (u_index) * square_size
+    y_mm = (v_index) * square_size
+    
+    checkerboard_world_corners.append([x_mm, y_mm, 0, 1])
+
+checkerboard_world_corners = np.stack(checkerboard_world_corners)
+
+checkerboard_image_corners = []
+for image in images_path:
+    corners = u.get_corners(image, grid_size)
+    checkerboard_image_corners.append(corners)
+    
+checkerboard_image_corners = np.concatenate(checkerboard_image_corners).reshape(-1, grid_size[0] * grid_size[1], 2)
+    
+all_params = [K[0,0], K[0,1], K[0,2], K[1,1], K[1,2]]
+all_r = []
+for i, R in enumerate(all_R):
+    r, theta = u.get_rot_axis_from_R(R)
+    all_r += r.tolist()
+    
+all_params += all_r + list(np.array(all_t).flatten())
+
+# least square computed using Levenberg-Marquardt
+least_square_output = least_squares(
+    u.compute_resiudals,
+    all_params,
+    args=(checkerboard_world_corners, checkerboard_image_corners),
+    method="lm"
+)
+
+# reconstructing the solutions
+n_images = (len(all_params) - 5) // 3 // 2
+alpha_u, skew, u_0, alpha_v, v_0 = least_square_output.x[:5]
+
+refined_K = np.stack([
+    [alpha_u, skew, u_0],
+    [0, alpha_v, v_0],
+    [0, 0, 1]
+])
+
+r = np.array(least_square_output.x[5:(5 + (n_images * 3))]).reshape(-1, 3)
+refined_t = np.array(least_square_output.x[-(n_images * 3):]).reshape(-1, 3)
+
+refined_R = np.stack([u.get_R_from_axis(r[i]) for i in range(n_images)])
+```
+Finally, the refined parameters are used to project the 3D points back onto the image plane, and the reprojection error is computed and visually validated by overlaying the projected corners onto the original image.
+```python
+# getting the image and extrinsics
+img_path = images_path[1]
+R1 = refined_R[1]
+t1 = refined_t[1]
+
+# combining R and t
+P = u.get_projection_matrix(refined_K, R1, t1)
+
+corners = u.get_corners(img_path, grid_size)
+projected_corners = []
+
+error = 0
+for index, corner in enumerate(corners):
+    u_coord = corner[0]
+    v_coord = corner[1]
+
+    grid_size_cv2 = tuple(reversed(grid_size))
+    u_index, v_index = np.unravel_index(index, grid_size_cv2)
+
+    # the coordinates of the corner w.r.t. the reference corner at position (0,0) of the corners array
+    x_mm = (u_index) * square_size
+    y_mm = (v_index) * square_size
+
+    point_m = np.array([x_mm, y_mm, 0, 1])
+
+    projected_u, projected_v = u.project(point_m, P)[0]
+    projected_corners.append((projected_u, projected_v))
+    
+    error += (projected_u - u_coord)**2 + (projected_v - v_coord)**2
+
+print(f"Error: {error:.2f}")
+print(f"Mean error per corner: {error/len(corners):.2f}")
+
+# showing the projected corners
+image = cv2.imread(img_path)
+image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)  # type: ignore
+
+for corner in projected_corners:
+    u_coord, v_coord = int(corner[0]), int(corner[1])
+    cv2.circle(image_rgb, (u_coord, v_coord), radius=5, color=(255, 0, 0), thickness=-1)
+
+px.imshow(image_rgb)
+```
+The results show that the procedure worked well, since both the error and the mean error per corner got lower, respectively 10.32 and 0.12, against the previously gotten 23.09 and 0.26, always referring to the picture below (image[0]). 
+
+<div style="
+  width: 50%;
+  text-align: center;
+  margin: 2em 0 3em 0;
+">
+  <img src="imgs_for_CV_project/red_dots_ex_7.png"
+       alt="Corners"
+       style="display: block; margin: 0 auto; width: 800px;">
+  <div style="margin-top: 0.8em; font-style: italic;">
+    Figure 9: Projected corners after reprojection error minimization
+  </div>
+</div>
+
+### Task 8 - Adding radial distorsion compensation 
+In this part, we need to add radial distorsion compensation to the basic Zhang's calibration procedure. So we based our implementation on the following formulas: 
+
+$$
+\begin{cases} 
+\hat{u} = (u - u_0)(1 + k_1r_d^2 + k_2r_d^4) + u_0 \\ 
+\hat{v} = (v - v_0)(1 + k_1r_d^2 + k_2r_d^4) + v_0 
+\end{cases}
+ \
+$$
+
+$$
+r_d^2 = \left(\frac{u - u_0}{\alpha_u}\right)^2 + \left(\frac{v - v_0}{\alpha_v}\right)^2 \
+$$
+
+$$
+K = \begin{bmatrix} 
+\alpha_u & \alpha_u \cot\omega & u_0 \\ 
+0 & \alpha_v / \sin\omega & v_0 \\ 
+0 & 0 & 1 
+\end{bmatrix}
+$$
