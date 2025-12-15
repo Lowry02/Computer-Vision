@@ -1,6 +1,16 @@
 import numpy as np
 import cv2
 
+def get_corners_jack(img_path:str, grid_size:tuple) -> np.ndarray:
+    img = cv2.imread(img_path)
+    return_value, corners = cv2.findChessboardCorners(img, patternSize=grid_size, corners=None) # type: ignore
+    corners=corners.reshape((88,2)).copy()
+    if return_value:
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        criteria = (cv2.TERM_CRITERIA_MAX_ITER | cv2.TERM_CRITERIA_EPS, 100, 0.001) # tuple for specifying the termination criteria of the iterative refinement procedure cornerSubPix()
+        cv2.cornerSubPix(gray,corners,(5,5),(-1,-1),criteria)
+    return corners
+
 def get_corners(img_path:str, grid_size:tuple) -> np.ndarray:
     img = cv2.imread(img_path)
     return_value, corners = cv2.findChessboardCorners(img, patternSize=grid_size, corners=None) # type: ignore
@@ -8,7 +18,7 @@ def get_corners(img_path:str, grid_size:tuple) -> np.ndarray:
         raise Exception(f"Corners not found in image {img_path}")
     return corners.squeeze(1)
 
-def get_homography(img_path:str, grid_size, square_size) -> tuple[np.ndarray, np.ndarray]:
+def get_homography(img_path:str, grid_size, square_size, corners = None) -> tuple[np.ndarray, np.ndarray]:
     """
     Computes the homography matrix for a checkerboard pattern in an image.
     This function reads an image containing a checkerboard pattern, detects the corners of the pattern,
@@ -40,7 +50,8 @@ def get_homography(img_path:str, grid_size, square_size) -> tuple[np.ndarray, np
     assert isinstance(square_size, int), f"square_size is not a int: type {type(square_size)}."
     assert len(grid_size) == 2, f"grid_size has dimension {len(grid_size)}: expected 2."
     
-    corners = get_corners(img_path, grid_size)
+    if corners == None:
+        corners = get_corners(img_path, grid_size)
         
     # CONSTRUCT A
     A = []
@@ -441,9 +452,7 @@ def compute_residuals(params: np.ndarray, checkerboard_world_corners: np.ndarray
     residuals = projected_points - checkerboard_image_corners
     return residuals.ravel()
 
-def get_radial_distortion(img_path, grid_size, square_size, intrinsic_matrix, projection_matrix):
-    corners = get_corners(img_path, grid_size)
-
+def get_radial_distortion(corners, grid_size, square_size, intrinsic_matrix, projection_matrix):
     alpha_u = intrinsic_matrix[0,0]
     alpha_v = intrinsic_matrix[1,1]
     u_0 = intrinsic_matrix[0, 2]
