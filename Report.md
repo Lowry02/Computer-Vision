@@ -9,7 +9,7 @@
 The **camera calibration problem** consists in estimating the intrinsic and extrinsic parameters of a camera through several measurements.  
 The outcome of these calculations is the **Perspective Projection Matrix** \( P \), which can be written as:
 
-P = K [ R | t ]
+P = K [R | t]
 
 Here:
 
@@ -22,97 +22,92 @@ It is required to calibrate (so to find the unique K and a pair [R | t] for each
 In our case we are provided with 81 images of a checkerboard, each image is taken from a different point in the World reference frame. 
 The foundation of Zhang's method relies on establishing a mathematical relationship, known as a **homography** (H), between the known 3D plane in the scene and its 2D perspective projection onto the image plane.
 First of all, we import **numpy** and **OpenCV** libraries to our code: 
-<pre>
+
+```python
+
   import numpy as np
   import cv2
-</pre>
+
+```
+
 Then we followed the **LabLecture_1** steps to find the keypoints between the given images, here we utilize the function **findChessboardCorners** from OpenCV library, getting the corresponcences we need to estimate the **homography**:
 
 ```python
+
 def get_corners(img_path:str, grid_size:tuple) -> np.ndarray:
+
     img = cv2.imread(img_path)
     return_value, corners = cv2.findChessboardCorners(img, patternSize=grid_size, corners=None) # type: ignore
     if not return_value:
         raise Exception(f"Corners not found in image {img_path}")
     return corners.squeeze(1)
+
 ```
 
 This function is then called inside another function we wrote to compute the homography matrix H:
 
 ```python
-  def get_homography(img_path:str, grid_size, square_size) -> tuple[np.ndarray, np.ndarray]:
-    
-    assert isinstance(img_path, str), f"img_path is not a string: type {type(img_path)}."
-    assert isinstance(grid_size, tuple), f"grid_size is not a tuple: type {type(grid_size)}."
-    assert isinstance(square_size, int), f"square_size is not a int: type {type(square_size)}."
-    assert len(grid_size) == 2, f"grid_size has dimension {len(grid_size)}: expected 2."
-    
-    corners = get_corners(img_path, grid_size)
-        
-    # CONSTRUCT A
-    A = []
-    for index, corner in enumerate(corners):
-        # getting the coordinates in pixels
-        u_coord = corner[0]
-        v_coord = corner[1]
-        
-        # defining the grid structure of the checkerboard
-        grid_size_cv2 = tuple(reversed(grid_size))  # we want (rows, cols), not (cols, rows)
-        u_index, v_index = np.unravel_index(index, grid_size_cv2)  # the first corner is at position (0,0), the second (0,1)
-        
-        # finding the (x,y) coordinates wrt the checkerboard
-        x_mm = (u_index) * square_size
-        y_mm = (v_index) * square_size
-        
-        eq_1 = [x_mm, y_mm, 1, 0, 0, 0, -u_coord*x_mm, -u_coord*y_mm, -u_coord]
-        eq_2 = [0, 0, 0, x_mm, y_mm, 1, -v_coord*x_mm, -v_coord*y_mm, -v_coord]
-        
-        A.append(eq_1)
-        A.append(eq_2)
 
-    # evaluating the SVD of A
-    A = np.array(A)
-    _, _, V = np.linalg.svd(A, full_matrices=False) # fill_matrices = False -> no padding and faster
+def get_homography(img_path:str, grid_size, square_size) -> tuple[np.ndarray, np.ndarray]:
+    
+  corners = get_corners(img_path, grid_size)
+        
+  # CONSTRUCT A
+  A = []
+  for index, corner in enumerate(corners):
+      # getting the coordinates in pixels
+      u_coord = corner[0]
+      v_coord = corner[1]
+        
+      # defining the grid structure of the checkerboard
+      grid_size_cv2 = tuple(reversed(grid_size))  # we want (rows, cols), not (cols, rows)
+      u_index, v_index = np.unravel_index(index, grid_size_cv2)  # the first corner is at position (0,0), the second (0,1)
+      
+      # finding the (x,y) coordinates wrt the checkerboard
+      x_mm = (u_index) * square_size
+      y_mm = (v_index) * square_size
+        
+      eq_1 = [x_mm, y_mm, 1, 0, 0, 0, -u_coord*x_mm, -u_coord*y_mm, -u_coord]
+      eq_2 = [0, 0, 0, x_mm, y_mm, 1, -v_coord*x_mm, -v_coord*y_mm, -v_coord]
+        
+      A.append(eq_1)
+      A.append(eq_2)
 
-    # V is transposed so the values of H are in the last row
-    H = V[-1, :].reshape(3,3)
-    return A, H
+  # evaluating the SVD of A
+  A = np.array(A)
+  _, _, V = np.linalg.svd(A, full_matrices=False) # fill_matrices = False -> no padding and faster
+
+  # V is transposed so the values of H are in the last row
+  H = V[-1, :].reshape(3,3)
+  return A, H
+
 ```
 
 Another function, called "get_v_vector", is used to compute the constraints vector of six unknowns starting from the homography:
 
 ```python
-  def get_v_vector(H:np.ndarray, i:int, j:int) -> np.ndarray:
+def get_v_vector(H:np.ndarray, i:int, j:int) -> np.ndarray:
 
-    assert isinstance(H, np.ndarray), f"H is not a numpy array: type {type(H)}."
-    assert H.shape == (3, 3), f"H does not have shape (3, 3): shape {H.shape}."
-    assert isinstance(i, int), f"i is not an integer: type {type(i)}."
-    assert isinstance(j, int), f"j is not an integer: type {type(j)}."
-    assert i in [1, 2], f"i must be 1 or 2: value {i}."
-    assert j in [1, 2], f"j must be 1 or 2: value {j}."
-
-    i -= 1
-    j -= 1
+  i -= 1
+  j -= 1
     
-    return np.array([
-        H[0,i] * H[0,j],
-        H[0,i] * H[1,j] + H[1,i] * H[0,j],
-        H[1,i] * H[1,j],
-        H[2,i] * H[0,j] + H[0,i] * H[2,j],
-        H[2,i] * H[1,j] + H[1,i] * H[2,j],
-        H[2,i] * H[2,j]
-    ])
+  return np.array([
+      H[0,i] * H[0,j],
+      H[0,i] * H[1,j] + H[1,i] * H[0,j],
+      H[1,i] * H[1,j],
+      H[2,i] * H[0,j] + H[0,i] * H[2,j],
+      H[2,i] * H[1,j] + H[1,i] * H[2,j],
+      H[2,i] * H[2,j]
+  ])
+
 ```
 
 After that, we wrote other two functions, respectively "get_intrinsic" and "get_extrinsic", which will compute the both K and the pair [R | t].
 The first one computes the Singular Value Decomposition (SVD) of the constraints matrix V (in which are stacked 2n x 6 equations, given n planes), then extracts from it the smallest singular vector which will be the solution to the problem. Later on, it performs Cholesky decomposition, finally finding K matrix.
 
 ```python
+
 def get_intrinsic(V:np.ndarray) -> np.ndarray:
-    
-    assert isinstance(V, np.ndarray), f"V is not a numpy array: type {type(V)}."
-    assert V.ndim == 2, f"V is not a 2D array: ndim {V.ndim}."
-    assert V.shape[1] == 6, f"V does not have 6 columns: shape {V.shape}."
     
     _, _, S = np.linalg.svd(V, full_matrices=False) # full_matrices = False -> no padding and faster
     B = S[-1, :]  # S is transposed so the values of B are in the last row
@@ -129,17 +124,14 @@ def get_intrinsic(V:np.ndarray) -> np.ndarray:
     K = K / K[2,2]
     # K[2, 2] = 1.0
     return K
+
 ```
 
 The latter computes column-wise the rotation matrix R and t, starting from the fact that P = [R | t] = K [r1 r2 r3 | t].
 
 ```python
+
 def get_extrinsic(K:np.ndarray, H:np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    
-assert isinstance(K, np.ndarray), f"K is not a numpy array: type {type(K)}."
-    assert K.shape == (3, 3), f"K does not have shape (3, 3): shape {K.shape}."
-    assert isinstance(H, np.ndarray), f"H is not a numpy array: type {type(H)}."
-    assert H.shape == (3, 3), f"H does not have shape (3, 3): shape {H.shape}."
     
     K_inv = np.linalg.inv(K)
     lam = 1 / np.linalg.norm(K_inv @ H[:, 0])
@@ -174,6 +166,7 @@ Now that we have everything required, the following execution code is shown.
 Here we process all the checkerboards we are provided with: 
 
 ```python
+
 # constants
 grid_size = (8,11)
 square_size = 11
@@ -181,12 +174,14 @@ square_size = 11
 # getting the images path
 images_path = "../images_and_poses_for_project_assignment/"
 images_path = [os.path.join(images_path, imagename) for imagename in os.listdir(images_path) if imagename.endswith(".png")]
+
 ```
 
-After that we can recall the functions shown upon for all the images provided: 
-First we compute the homographies
+After that we can recall the functions shown upon for all the images provided. 
+First we compute the homographies:
 
 ```python
+
 V = []
 all_H = []  # saving the homographies for each image
 
@@ -204,6 +199,7 @@ for img in images_path:
     
 # computing params
 V = np.array(V)
+
 ```
 
 Then we compute the matrix of intrinsics parameters: 
@@ -212,9 +208,10 @@ Then we compute the matrix of intrinsics parameters:
 K = u.get_intrinsic(V)
 ```
 
-And finally, we compute the pair [R|t] for each image processed: 
+And finally, we compute the pair [R | t] for each image processed: 
 
 ```python
+
 all_R = []
 all_t = []
 
@@ -222,6 +219,7 @@ for H in all_H:
     R, t = u.get_extrinsic(K, H)
     all_R.append(R)
     all_t.append(t)
+
 ```
 
 ### Task 2 - Total Reprojection Error 
@@ -230,38 +228,36 @@ error, which quantifies the projection error, i.e. the distance between the proj
 To realize that, first of all we defined the function **get_projection_matrix** to compute the P matrix for an image given intrinsics and extrinsics parameters: 
 
 ```python
+
 def get_projection_matrix(K: np.ndarray, R: np.ndarray, t: np.ndarray) -> np.ndarray:
-    
-    assert isinstance(K, np.ndarray), f"K is not a numpy array: type {type(K)}."
-    assert K.shape == (3, 3), f"K does not have shape (3, 3): shape {K.shape}."
-    assert isinstance(R, np.ndarray), f"R is not a numpy array: type {type(R)}."
-    assert R.shape == (3, 3), f"R does not have shape (3, 3): shape {R.shape}."
-    assert isinstance(t, np.ndarray), f"t is not a numpy array: type {type(t)}."
-    assert t.shape in [(3,), (3, 1)], f"t does not have shape (3,) or (3,1): shape {t.shape}."
     
     G = np.zeros((3, 4))
     G[:, :3] = R
     G[:, 3] = t
     return  K @ G
+
 ```
 
 After that, to achieve the requirements we need to project 3D points onto a 2D image plane using the provided projection matrix. So we defined the function **project**:
 
 ```python
+
 def project(points:np.ndarray, P:np.ndarray) -> np.ndarray:
-    if len(points.shape) == 1:
-        points = np.expand_dims(points, axis=0)
-    
-    projected_u = (P[0, :] @ points.transpose()) / (P[2, :] @ points.transpose())
-    projected_v = (P[1, :] @ points.transpose()) / (P[2, :] @ points.transpose())
-    
-    return np.stack([np.array([u, v]) for u, v in zip(projected_u, projected_v)])
+
+  if len(points.shape) == 1:
+      points = np.expand_dims(points, axis=0)
+  
+  projected_u = (P[0, :] @ points.transpose()) / (P[2, :] @ points.transpose())
+  projected_v = (P[1, :] @ points.transpose()) / (P[2, :] @ points.transpose())
+  return np.stack([np.array([u, v]) for u, v in zip(projected_u, projected_v)])
+
 ```
 
 Now that we have the necessary tools, the following code is executed: 
 
 ```python
-  # getting the image and extrinsics
+
+# getting the image and extrinsics
 img_path = images_path[1]
 R1 = all_R[1]
 t1 = all_t[1]
@@ -305,7 +301,7 @@ The results we got for image 0 were the following:
 ">
   <img src="imgs_for_CV_project/red_dots.png"
        alt="Chessboard calibration pattern"
-       style="display: block; margin: 0 auto; width: 800px;">
+       style="display: block; margin: 0 auto; width: 500px;">
   <div style="margin-top: 0.8em; font-style: italic;">
     Figure 1: Projected corners after calibration.
   </div>
@@ -318,6 +314,7 @@ The second data is the most interesting: a value of 0.26 means that, on average,
 To show the projected corners, the code below is executed: 
 
 ```python
+
 image = cv2.imread(img_path)
 image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)  # type: ignore
 
@@ -326,6 +323,7 @@ for corner in projected_corners:
     cv2.circle(image_rgb, (u_coord, v_coord), radius=5, color=(255, 0, 0), thickness=-1)
 
 px.imshow(image_rgb)
+
 ```
 
 ### Task 3 - Superimposing a cylinder 
@@ -344,17 +342,6 @@ def superimpose_cylinder(
     num_sides: int = 30, 
     num_height_slices: int = 5
 ) -> np.ndarray:
-    
-    assert isinstance(img_path, str), f"img_path is not a string: type {type(img_path)}."
-    assert isinstance(P, np.ndarray), f"P is not a numpy array: type {type(P)}."
-    assert P.shape == (3, 4), f"P does not have shape (3, 4): shape {P.shape}."
-    assert isinstance(radius, (int, float)), f"radius is not a number: type {type(radius)}."
-    assert isinstance(height, (int, float)), f"height is not a number: type {type(height)}."
-    assert isinstance(center_x, (int, float)), f"center_x is not a number: type {type(center_x)}."
-    assert isinstance(center_y, (int, float)), f"center_y is not a number: type {type(center_y)}."
-    assert isinstance(num_sides, int), f"num_sides is not an integer: type {type(num_sides)}."
-    assert num_sides >= 3, f"num_sides is less than 3: value {num_sides}."  
-
     
     # Generation of 3D Points 
     theta = np.linspace(0, 2 * np.pi, num_sides, endpoint=False)
@@ -417,11 +404,13 @@ def superimpose_cylinder(
         cv2.line(img, tuple(pt_base), tuple(pt_top), color=(255, 0, 0), thickness=1)
         
     return img
+
 ```
 
 The execution code of the task is right below, in which we recalled the **get_projection_matrix** for each of the 25 images before superimposing the cylinders: 
 
 ```python
+
 import random
 
 random.seed(0)
@@ -461,6 +450,7 @@ for i in images_indices:
     superimposed_image_list.append(superimposed_image)
     
 px.imshow(superimposed_image_list[0])
+
 ```
 
 <div style="
@@ -480,6 +470,7 @@ px.imshow(superimposed_image_list[0])
 In this exercize it is requested to plot the standard deviation of the entries u_0 and v_0 of calibration matrix K as a function of the images processed to compute the intrinsics parameters. The minimum number of planes required to compute K is 3; and for some combination of images the matrix K could be not positive definite, so not feasable for computations (Cholesky). In the following code, for each number of images, multiple random subsets are sampled and used to compute the intrinsic matrix. The standard deviation of the principal point coordinates (u_0 and v_0) across samples is then computed and plotted, showing how the estimation variance decreases as more images are used. As we can see, as soon as the image group consists of only 6-7 elements, the standard deviation is minimal.
 
 ```python
+
 random.seed(0)
 max_N_images = 20
 N_images = list(range(3, max_N_images + 1))
@@ -522,6 +513,7 @@ plt.title('Standard Deviation vs Number of Images')
 plt.grid(True)
 plt.legend()
 plt.show()
+
 ```
 
 <div style="
@@ -531,7 +523,7 @@ plt.show()
 ">
   <img src="imgs_for_CV_project/stdv.png"
        alt="Stvd vs Num IMgs"
-       style="display: block; margin: 0 auto; width: 800px;">
+       style="display: block; margin: 0 auto; width: 500px;">
   <div style="margin-top: 0.8em; font-style: italic;">
     Figure 3: Standard deviation vs number of images.
   </div>
@@ -543,6 +535,7 @@ In this task it is requested to compare the extrinsics parameter previously got 
 Notice that, since **.yaml** files are scaled in **meters**, while ours in **millimeters**, we needed to multiply by a factor of 1000 the t vector:
 
 ```python
+
 R_errors = []
 t_errors = []
 
@@ -573,6 +566,7 @@ plt.ylabel('Error - Euclidean Distance')
 plt.title('t Errors')
 plt.grid(True)
 plt.show()
+
 ```
 
 <div style="display: flex; justify-content: center; align-items: flex-start; gap: 20px; background-color: #0d1117; padding: 2em; border-radius: 8px;">
@@ -600,10 +594,9 @@ plt.show()
 </div>
 
 Analyzing the boxplots, we can conclude some observations:
-  -  Rotation (R Errors): The boxplot shows a very high, yet extremely stable, error centered around 3.13 radians. This value is approximately equal to $\pi$, indicating a systematic 180° rotation. This suggests a consistent difference in coordinate system conventions (e.g., the direction of the Z-axis) between the two models rather than a failure in the calibration itself.
-  -  Translation (t Errors): The translation error fluctuates between 7.5 mm and 12.2 mm, with a median near 11 mm. This indicates a metric discrepancy likely caused by slight variations in the estimation of the camera's distance from the board or a minor scale difference in the *square_size* parameter.
+  -  Rotation (R Errors): The boxplot shows a very high, yet extremely stable, error centered around 3.13 radians. This value is approximately equal to $\pi$, indicating a systematic 180° rotation. This suggests a difference in coordinate system conventions (e.g., the direction of the Z-axis) between the two models rather than a failure in the calibration itself.
+  -  Translation (t Errors): The translation error fluctuates between 7.5 mm and 12.2 mm, with a median near 11 mm. This indicates a metric discrepancy likely caused by slight variations in the estimation of the camera's distance from the board.
   -  Stability: Both plots exhibit relatively small "whiskers," which implies that the calibration algorithm is robust and consistent across different images, despite the fixed orientation bias.
-# TODO: discutere i risultati 
 
 ### Task 6 - Our own calibration 
 Point 6 requires to print a checkboard, take several images of it and estimate the parameters of our own camera.
@@ -612,7 +605,9 @@ Moreover, by estimating the **Total Reprojection Error**, over image 0 we get a 
 To assess such thing we decided to rescale the pictures taken from us (1600x1200) into the shape of those given by professor (1280x720). Doing so, we could compare the results and confirm that the model works well, because the **total mean error per corner** for our pictures is **1.21**, while for Professor's images is **1.12**. 
 
 The code used, which does the scaling before the same actions performed by task 2 over all images, is the following: 
+
 ```python
+
 old_w, old_h = 1600, 1200
 new_w, new_h = 1280, 720
 sx = new_w / old_w
@@ -663,7 +658,9 @@ if total_corners_count > 0:
 
 
 raw_img = cv2.imread(images_path[viz_img_index])
+
 # Important: the image must be resized to match K_scaled and the points.
+
 img_resized = cv2.resize(raw_img, (new_w, new_h))
 image_rgb = cv2.cvtColor(img_resized, cv2.COLOR_BGR2RGB)
 
@@ -671,6 +668,7 @@ for cp in projected_corners_viz:
     cv2.circle(image_rgb, (int(cp[0]), int(cp[1])), radius=3, color=(255, 0, 0), thickness=-1)
 
 px.imshow(image_rgb)
+
 ```
 
 <div style="
@@ -697,7 +695,7 @@ Then it comes to superimposing the cylinder to our own chessboard:
 ">
   <img src="imgs_for_CV_project/newplot.png"
        alt="Cylinder_6"
-       style="display: block; margin: 0 auto; width: 800px;">
+       style="display: block; margin: 0 auto; width: 500px;">
   <div style="margin-top: 0.8em; font-style: italic;">
     Figure 7: Superimposed cylinder on our chessboard.
   </div>
@@ -712,7 +710,7 @@ Later on, the standard deviation of the entries u_0 and v_0 of calibration matri
 ">
   <img src="imgs_for_CV_project/output.png"
        alt="STDV"
-       style="display: block; margin: 0 auto; width: 800px;">
+       style="display: block; margin: 0 auto; width: 500px;">
   <div style="margin-top: 0.8em; font-style: italic;">
     Figure 8: Standard Deviation of u_0 and v_0 vs number of images processed.
   </div>
@@ -724,17 +722,45 @@ Notice that task 5 is not reported since comparing the estimates taken by Profes
 In this exercize it is asked to minimize the reprojection error instead of the algebrain one using **Maximum Likelihood** Estimation approach, suggested in Section 3.2 of Zhang, 2002. 
 The following code refines both intrinsic and extrinsic camera parameters by minimizing the reprojection error of checkerboard corners.  
 The 3D coordinates of the checkerboard corners are first defined in the WRF, while the corresponding 2D image points are extracted from all calibration images.  
-A non-linear least-squares optimization based on the Levenberg–Marquardt algorithm is then applied to jointly optimize the camera intrinsics, rotations (parameterized using axis–angle representation), and translations. To achieve this goal, first we had to define the function **compute_residuals** to compute the residuals between the projected checkerboard corners and the observed image corners.
+A non-linear least-squares optimization based on the Levenberg–Marquardt algorithm is then applied to jointly optimize the camera intrinsics, rotations (parameterized using axis–angle representation), and translations. 
+First thing first, we had to define some function to implement the Rodrigues formula (https://en.wikipedia.org/wiki/Axis%E2%80%93angle_representation), cited in Zhang's paper: 
+The first one computes the rotation axis and angle from a given rotation matrix R, calculating the corresponding rotation axis (a unit vector) and the rotation angle (in radians).
+```python
+def get_rot_axis_from_R(R: np.ndarray) -> tuple[np.ndarray, float]:
+
+  theta = float(np.arccos((np.trace(R) - 1) / 2))
+  _r = np.array([
+        R[2,1] - R[1,2],
+        R[0,2] - R[2,0],
+        R[1,0] - R[0,1],
+    ])
+  return (1/(2*np.sin(theta))) * _r * theta, theta
+
+```
+The second one computes the rotation matrix from an axis-angle representation by taking a 3D vector representing the axis of rotation scaled by the rotation angle (in radians) and computes the corresponding  rotation matrix.
+```python
+
+def get_R_from_axis(r: np.ndarray) -> np.ndarray:
+   
+    theta = np.linalg.norm(r)
+    r = r / theta
+    # cross product matrix
+    r_x = np.stack([
+        [ 0  , -r[2], r[1]  ],
+        [r[2] ,   0  , -r[0]],
+        [-r[1], r[0],   0   ],
+    ])
+    
+    return np.eye(3) + \
+            np.sin(theta) * r_x + \
+            (1 - np.cos(theta)) * np.linalg.matrix_power(r_x, 2)
+```
+
+Then we had to define the function **compute_residuals** to compute the residuals between the projected checkerboard corners and the observed image corners.
+
 ```python
 
 def compute_resiudals(params: np.ndarray, checkerboard_world_corners: np.ndarray, checkerboard_image_corners: np.ndarray):
-     
-    assert isinstance(params, np.ndarray), f"params is not a numpy array: type {type(params)}."
-    assert params.ndim == 1, f"params is not a 1D array: ndim {params.ndim}."
-    assert isinstance(checkerboard_world_corners, np.ndarray), f"checkerboard_world_corners is not a numpy array: type {type(checkerboard_world_corners)}."
-    assert checkerboard_world_corners.ndim == 2 and checkerboard_world_corners.shape[1] == 4, f"checkerboard_world_corners must have shape (n_points, 4): shape {checkerboard_world_corners.shape}."
-    assert isinstance(checkerboard_image_corners, np.ndarray), f"checkerboard_image_corners is not a numpy array: type {type(checkerboard_image_corners)}."
-    assert checkerboard_image_corners.ndim == 3 and checkerboard_image_corners.shape[2] == 2, f"checkerboard_image_corners must have shape (n_images, n_points, 2): shape {checkerboard_image_corners.shape}."
     
     n_images = (len(params) - 5) // 3 // 2
     alpha_u, skew, u_0, alpha_v, v_0 = params[:5]
@@ -755,37 +781,12 @@ def compute_resiudals(params: np.ndarray, checkerboard_world_corners: np.ndarray
     
     residuals = projected_points - checkerboard_image_corners
     return residuals.ravel()
+
 ```
-Then, following the Rodrigues formula (https://en.wikipedia.org/wiki/Axis%E2%80%93angle_representation), we executed the following:
+
+Then
+
 ```python
-
-checkerboard_world_corners = []
-for i in range(grid_size[0] * grid_size[1]):
-    grid_size_cv2 = tuple(reversed(grid_size)) 
-    u_index, v_index = np.unravel_index(i, grid_size_cv2)
-        
-    # finding the (x,y) coordinates wrt the checkerboard
-    x_mm = (u_index) * square_size
-    y_mm = (v_index) * square_size
-    
-    checkerboard_world_corners.append([x_mm, y_mm, 0, 1])
-
-checkerboard_world_corners = np.stack(checkerboard_world_corners)
-
-checkerboard_image_corners = []
-for image in images_path:
-    corners = u.get_corners(image, grid_size)
-    checkerboard_image_corners.append(corners)
-    
-checkerboard_image_corners = np.concatenate(checkerboard_image_corners).reshape(-1, grid_size[0] * grid_size[1], 2)
-    
-all_params = [K[0,0], K[0,1], K[0,2], K[1,1], K[1,2]]
-all_r = []
-for i, R in enumerate(all_R):
-    r, theta = u.get_rot_axis_from_R(R)
-    all_r += r.tolist()
-    
-all_params += all_r + list(np.array(all_t).flatten())
 
 # least square computed using Levenberg-Marquardt
 least_square_output = least_squares(
@@ -809,52 +810,10 @@ r = np.array(least_square_output.x[5:(5 + (n_images * 3))]).reshape(-1, 3)
 refined_t = np.array(least_square_output.x[-(n_images * 3):]).reshape(-1, 3)
 
 refined_R = np.stack([u.get_R_from_axis(r[i]) for i in range(n_images)])
+
 ```
 Finally, the refined parameters are used to project the 3D points back onto the image plane, and the reprojection error is computed and visually validated by overlaying the projected corners onto the original image.
-```python
-# getting the image and extrinsics
-img_path = images_path[1]
-R1 = refined_R[1]
-t1 = refined_t[1]
 
-# combining R and t
-P = u.get_projection_matrix(refined_K, R1, t1)
-
-corners = u.get_corners(img_path, grid_size)
-projected_corners = []
-
-error = 0
-for index, corner in enumerate(corners):
-    u_coord = corner[0]
-    v_coord = corner[1]
-
-    grid_size_cv2 = tuple(reversed(grid_size))
-    u_index, v_index = np.unravel_index(index, grid_size_cv2)
-
-    # the coordinates of the corner w.r.t. the reference corner at position (0,0) of the corners array
-    x_mm = (u_index) * square_size
-    y_mm = (v_index) * square_size
-
-    point_m = np.array([x_mm, y_mm, 0, 1])
-
-    projected_u, projected_v = u.project(point_m, P)[0]
-    projected_corners.append((projected_u, projected_v))
-    
-    error += (projected_u - u_coord)**2 + (projected_v - v_coord)**2
-
-print(f"Error: {error:.2f}")
-print(f"Mean error per corner: {error/len(corners):.2f}")
-
-# showing the projected corners
-image = cv2.imread(img_path)
-image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)  # type: ignore
-
-for corner in projected_corners:
-    u_coord, v_coord = int(corner[0]), int(corner[1])
-    cv2.circle(image_rgb, (u_coord, v_coord), radius=5, color=(255, 0, 0), thickness=-1)
-
-px.imshow(image_rgb)
-```
 The results show that the procedure worked well, since both the error and the mean error per corner got lower, respectively 10.32 and 0.12, against the previously gotten 23.09 and 0.26, always referring to the picture below (image[0]). 
 
 <div style="
@@ -864,7 +823,7 @@ The results show that the procedure worked well, since both the error and the me
 ">
   <img src="imgs_for_CV_project/red_dots_ex_7.png"
        alt="Corners"
-       style="display: block; margin: 0 auto; width: 800px;">
+       style="display: block; margin: 0 auto; width: 500px;">
   <div style="margin-top: 0.8em; font-style: italic;">
     Figure 9: Projected corners after reprojection error minimization
   </div>
