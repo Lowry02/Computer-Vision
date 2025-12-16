@@ -452,7 +452,7 @@ def compute_residuals(params: np.ndarray, checkerboard_world_corners: np.ndarray
     residuals = projected_points - checkerboard_image_corners
     return residuals.ravel()
 
-def get_radial_distortion(corners, grid_size, square_size, intrinsic_matrix, projection_matrix):
+def get_radial_distortion(n_images, all_corners, grid_size, square_size, intrinsic_matrix, all_projection_matrix):
     alpha_u = intrinsic_matrix[0,0]
     alpha_v = intrinsic_matrix[1,1]
     u_0 = intrinsic_matrix[0, 2]
@@ -461,27 +461,28 @@ def get_radial_distortion(corners, grid_size, square_size, intrinsic_matrix, pro
     A = []
     b = []
 
-    for index, corner in enumerate(corners):
-        u_hat = corner[0]
-        v_hat = corner[1]
+    grid_size_cv2 = tuple(reversed(grid_size))
+    for i in range(n_images):
+        for index, corner in enumerate(all_corners[i]):
+            u_hat = corner[0]
+            v_hat = corner[1]
 
-        grid_size_cv2 = tuple(reversed(grid_size))
-        u_index, v_index = np.unravel_index(index, grid_size_cv2)
+            u_index, v_index = np.unravel_index(index, grid_size_cv2)
 
-        # the coordinates of the corner w.r.t. the reference corner at position (0,0) of the corners array
-        # X, Y, Z -> Xw = (X, Y, 0)
-        x_mm = (u_index) * square_size
-        y_mm = (v_index) * square_size
-        point_m = np.array([x_mm, y_mm, 0, 1])
+            # the coordinates of the corner w.r.t. the reference corner at position (0,0) of the corners array
+            # X, Y, Z -> Xw = (X, Y, 0)
+            x_mm = (u_index) * square_size
+            y_mm = (v_index) * square_size
+            point_m = np.array([x_mm, y_mm, 0, 1])
 
-        u_proj, v_proj = project(point_m, projection_matrix)[0] # -> Ideal (distortion-free) pixel coordinates
-        r2 = ((u_proj - u_0) / alpha_u)**2 + ((v_proj - v_0) / alpha_v)**2
+            u_proj, v_proj = project(point_m, all_projection_matrix[i])[0] # -> Ideal (distortion-free) pixel coordinates
+            r2 = ((u_proj - u_0) / alpha_u)**2 + ((v_proj - v_0) / alpha_v)**2
 
-        A.append([(u_proj - u_0) * r2, (u_proj - u_0) * r2*r2])
-        A.append([(v_proj - v_0) * r2, (v_proj - v_0) * r2*r2])
+            A.append([(u_proj - u_0) * r2, (u_proj - u_0) * r2*r2])
+            A.append([(v_proj - v_0) * r2, (v_proj - v_0) * r2*r2])
 
-        b.append(u_hat - u_proj)
-        b.append(v_hat - v_proj)
+            b.append(u_hat - u_proj)
+            b.append(v_hat - v_proj)
 
     A = np.array(A)
     b = np.array(b)
