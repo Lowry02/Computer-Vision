@@ -50,18 +50,18 @@ def get_homography(img_path:str, grid_size, square_size, corners = None) -> tupl
     assert isinstance(square_size, int), f"square_size is not a int: type {type(square_size)}."
     assert len(grid_size) == 2, f"grid_size has dimension {len(grid_size)}: expected 2."
     
-    if corners == None:
+    if corners is None:
         corners = get_corners(img_path, grid_size)
         
     # CONSTRUCT A
     A = []
+    grid_size_cv2 = tuple(reversed(grid_size))  # we want (rows, cols), not (cols, rows)
     for index, corner in enumerate(corners):
         # getting the coordinates in pixels
         u_coord = corner[0]
         v_coord = corner[1]
         
         # defining the grid structure of the checkerboard
-        grid_size_cv2 = tuple(reversed(grid_size))  # we want (rows, cols), not (cols, rows)
         u_index, v_index = np.unravel_index(index, grid_size_cv2)  # the first corner is at position (0,0), the second (0,1)
         
         # finding the (x,y) coordinates wrt the checkerboard
@@ -490,3 +490,120 @@ def get_radial_distortion(n_images, all_corners, grid_size, square_size, intrins
     k, _, _, _ = np.linalg.lstsq(A, b, rcond=None)
     k1, k2 = k
     return k1, k2
+
+def undistort_point(u_hat, v_hat, K, k1, k2, n_iter=10):
+    alpha_u = K[0,0]
+    alpha_v = K[1,1]
+    u0 = K[0,2]
+    v0 = K[1,2]
+
+    # initial guess: assume no distortion
+    new_u = u_hat
+    new_v = v_hat
+
+    for _ in range(n_iter):
+        x = (new_u - u0) / alpha_u
+        y = (new_v - v0) / alpha_v
+        r2 = x*x + y*y
+        radial = 1 + k1*r2 + k2*r2*r2
+
+        new_u = u0 + (u_hat - u0) / radial
+        new_v = v0 + (v_hat - v0) / radial
+
+    return new_u, new_v
+
+# ==================== WHAT ABOUT CREATING A FUNCTION ABOUT CALIBRATION? =================
+def calibrate_camera(images_path, grid_size, square_size, all_corners):
+    V = []
+    all_H = []
+    # Estimate homographies
+    for i, img in enumerate(images_path):
+        _, H = get_homography(img, grid_size, square_size, all_corners[i])
+        all_H.append(H)
+        
+        v_12 = get_v_vector(H, 1, 2)
+        v_11 = get_v_vector(H, 1, 1)
+        v_22 = get_v_vector(H, 2, 2)
+        
+        V.append(v_12)
+        V.append(v_11 - v_22)
+        
+    V = np.array(V)
+    # Estimate K
+    K = get_intrinsic(V)
+
+    # Estimate P_i for each image
+    all_P = []
+
+    for H in all_H:
+        R, t = get_extrinsic(K, H)
+        P = get_projection_matrix(K, R, t)
+        all_P.append(P)
+    
+    return K, all_P
+
+def compute_radial_points(images_path, grid_size, square_size, all_corners):
+    # V = []
+    # all_H = []
+    # # Estimate homographies
+    # for i, img in enumerate(images_path):
+    #     _, H = get_homography(img, grid_size, square_size, all_corners[i])
+    #     all_H.append(H)
+        
+    #     v_12 = get_v_vector(H, 1, 2)
+    #     v_11 = get_v_vector(H, 1, 1)
+    #     v_22 = get_v_vector(H, 2, 2)
+        
+    #     V.append(v_12)
+    #     V.append(v_11 - v_22)
+        
+    # V = np.array(V)
+    # # Estimate K
+    # K = get_intrinsic(V)
+
+    # # Estimate P_i for each image
+    # all_P = []
+
+    # for H in all_H:
+    #     R, t = get_extrinsic(K, H)
+    #     P = get_projection_matrix(K, R, t)
+    #     all_P.append(P)
+    K, all_P = calibrate_camera(images_path, grid_size, square_size, all_corners)
+    # ========================================
+    # DISTORTION IGNORED IN THE FIRST ITERATION
+
+    # Estimate k1, k2
+    k1, k2 = get_radial_distortion(len(images_path), all_corners, grid_size, square_size, K, all_P)
+
+    # Undistort all points
+    # -> from the corners, compute everything till k1 and k2
+    # and distort the corners based on k1 and k2
+    # then repeat the procedure
+    new_all_corners = []
+
+    for corners in all_corners:
+        undistorted = []
+        for u_hat, v_hat in corners:
+            new_u, new_v = undistort_point(u_hat, v_hat, K, k1, k2)
+            undistorted.append([new_u, new_v])
+        new_all_corners.append(np.array(undistorted))
+
+    return new_all_corners, k1, k2
+
+def compute_reprojection_error(images_path, grid_size, all_projected_corners):
+    """
+    all_projected_corners: in this case proj points are in the first iteration the ones obtained
+    from the proj matrix P, and in the following iterations the undistorted points
+    """
+    total_error = 0
+    total_points = 0
+
+    for i, img in enumerate(images_path):
+        observed_corners = get_corners_jack(img, grid_size)
+        for j, (u_proj, v_proj) in enumerate(all_projected_corners[i]):
+            u_obs, v_obs = observed_corners[j]
+            err = np.sqrt((u_obs - u_proj)**2 + (v_obs - v_proj)**2)
+            total_error += err
+            total_points += 1
+
+    return total_error / total_points
