@@ -452,32 +452,31 @@ def compute_residuals(params: np.ndarray, checkerboard_world_corners: np.ndarray
     residuals = projected_points - checkerboard_image_corners
     return residuals.ravel()
 
-def get_radial_distortion(n_images, all_corners, grid_size, square_size, intrinsic_matrix, all_projection_matrix):
-    alpha_u = intrinsic_matrix[0,0]
-    alpha_v = intrinsic_matrix[1,1]
-    u_0 = intrinsic_matrix[0, 2]
-    v_0 = intrinsic_matrix[1, 2]
+def get_radial_distorsion(images_path, grid_size, square_size, K, all_P):
+    alpha_u = K[0,0]
+    alpha_v = K[1,1]
+    u_0 = K[0, 2]
+    v_0 = K[1, 2]
 
     A = []
     b = []
 
     grid_size_cv2 = tuple(reversed(grid_size))
-    for i in range(n_images):
-        for index, corner in enumerate(all_corners[i]):
+    for i, img in enumerate(images_path):
+        corners = get_corners_jack(img, grid_size)
+        for index, corner in enumerate(corners):
+            # Get the projected points
             u_hat = corner[0]
             v_hat = corner[1]
-
             u_index, v_index = np.unravel_index(index, grid_size_cv2)
-
-            # the coordinates of the corner w.r.t. the reference corner at position (0,0) of the corners array
-            # X, Y, Z -> Xw = (X, Y, 0)
             x_mm = (u_index) * square_size
             y_mm = (v_index) * square_size
             point_m = np.array([x_mm, y_mm, 0, 1])
+            u_proj, v_proj = project(point_m, all_P[i])[0]
 
-            u_proj, v_proj = project(point_m, all_projection_matrix[i])[0] # -> Ideal (distortion-free) pixel coordinates
             r2 = ((u_proj - u_0) / alpha_u)**2 + ((v_proj - v_0) / alpha_v)**2
 
+            # Get the equation system for each image
             A.append([(u_proj - u_0) * r2, (u_proj - u_0) * r2*r2])
             A.append([(v_proj - v_0) * r2, (v_proj - v_0) * r2*r2])
 
@@ -487,6 +486,7 @@ def get_radial_distortion(n_images, all_corners, grid_size, square_size, intrins
     A = np.array(A)
     b = np.array(b)
 
+    # Solve the system to obtain k1 and k2
     k, _, _, _ = np.linalg.lstsq(A, b, rcond=None)
     k1, k2 = k
     return k1, k2
@@ -573,7 +573,7 @@ def compute_radial_points(images_path, grid_size, square_size, all_corners):
     # DISTORTION IGNORED IN THE FIRST ITERATION
 
     # Estimate k1, k2
-    k1, k2 = get_radial_distortion(len(images_path), all_corners, grid_size, square_size, K, all_P)
+    k1, k2 = get_radial_distorsion(images_path, grid_size, square_size, K, all_P)
 
     # Undistort all points
     # -> from the corners, compute everything till k1 and k2
@@ -591,10 +591,6 @@ def compute_radial_points(images_path, grid_size, square_size, all_corners):
     return new_all_corners, k1, k2
 
 def compute_reprojection_error(images_path, grid_size, all_projected_corners):
-    """
-    all_projected_corners: in this case proj points are in the first iteration the ones obtained
-    from the proj matrix P, and in the following iterations the undistorted points
-    """
     total_error = 0
     total_points = 0
 
