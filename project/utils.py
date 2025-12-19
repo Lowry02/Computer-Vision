@@ -183,7 +183,7 @@ def get_extrinsic(K:np.ndarray, H:np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     
     K_inv = np.linalg.inv(K)
     lam = 1 / np.linalg.norm(K_inv @ H[:, 0])
-    
+
     t = lam * K_inv @ H[:, 2]
     if t[2] < 0:
         t = -t
@@ -512,83 +512,88 @@ def undistort_point(u_hat, v_hat, K, k1, k2, n_iter=10):
 
     return new_u, new_v
 
-# ==================== WHAT ABOUT CREATING A FUNCTION ABOUT CALIBRATION? =================
-def calibrate_camera(images_path, grid_size, square_size, all_corners):
-    V = []
-    all_H = []
-    # Estimate homographies
-    for i, img in enumerate(images_path):
-        _, H = get_homography(img, grid_size, square_size, all_corners[i])
-        all_H.append(H)
-        
-        v_12 = get_v_vector(H, 1, 2)
-        v_11 = get_v_vector(H, 1, 1)
-        v_22 = get_v_vector(H, 2, 2)
-        
-        V.append(v_12)
-        V.append(v_11 - v_22)
-        
-    V = np.array(V)
-    # Estimate K
-    K = get_intrinsic(V)
+def project_with_distortion(world_corners, K, rvec, tvec, k1, k2):
+    R = get_R_from_axis(rvec)
+    Xc = (R @ world_corners.T).T + tvec
+    x = Xc[:, 0] / Xc[:, 2]
+    y = Xc[:, 1] / Xc[:, 2]
 
-    # Estimate P_i for each image
-    all_P = []
+    r2 = x**2 + y**2
+    radial = 1 + k1*r2 + k2*r2*r2
+    x_hat = x*radial
+    y_hat = y*radial
 
-    for H in all_H:
-        R, t = get_extrinsic(K, H)
-        P = get_projection_matrix(K, R, t)
-        all_P.append(P)
-    
-    return K, all_P
+    alpha_u = K[0, 0]
+    alpha_v = K[1, 1]
+    u0 = K[0, 2]
+    v0 = K[1, 2]
 
-def compute_radial_points(images_path, grid_size, square_size, all_corners):
-    # V = []
-    # all_H = []
-    # # Estimate homographies
-    # for i, img in enumerate(images_path):
-    #     _, H = get_homography(img, grid_size, square_size, all_corners[i])
-    #     all_H.append(H)
-        
-    #     v_12 = get_v_vector(H, 1, 2)
-    #     v_11 = get_v_vector(H, 1, 1)
-    #     v_22 = get_v_vector(H, 2, 2)
-        
-    #     V.append(v_12)
-    #     V.append(v_11 - v_22)
-        
-    # V = np.array(V)
-    # # Estimate K
-    # K = get_intrinsic(V)
+    u_dist = x_hat*alpha_u + u0
+    v_dist = y_hat*alpha_v + v0
+    return np.column_stack([u_dist, v_dist])
 
-    # # Estimate P_i for each image
-    # all_P = []
+def pack_params(K, k1, k2, rvecs, tvecs):
+    params = [
+        K[0, 0],  # alpha_u
+        K[1, 1],  # alpha_v
+        K[0, 2],  # u0
+        K[1, 2],  # v0
+        k1,
+        k2
+    ]
 
-    # for H in all_H:
-    #     R, t = get_extrinsic(K, H)
-    #     P = get_projection_matrix(K, R, t)
-    #     all_P.append(P)
-    K, all_P = calibrate_camera(images_path, grid_size, square_size, all_corners)
-    # ========================================
-    # DISTORTION IGNORED IN THE FIRST ITERATION
+    for rvec, tvec in zip(rvecs, tvecs):
+        params.extend(rvec.ravel())
+        params.extend(tvec.ravel())
 
-    # Estimate k1, k2
-    k1, k2 = get_radial_distorsion(images_path, grid_size, square_size, K, all_P)
+    return np.array(params)
 
-    # Undistort all points
-    # -> from the corners, compute everything till k1 and k2
-    # and distort the corners based on k1 and k2
-    # then repeat the procedure
-    new_all_corners = []
+def unpack_params(params, n_images):
+    alpha_u, alpha_v, u0, v0, k1, k2 = params[:6]
 
-    for corners in all_corners:
-        undistorted = []
-        for u_hat, v_hat in corners:
-            new_u, new_v = undistort_point(u_hat, v_hat, K, k1, k2)
-            undistorted.append([new_u, new_v])
-        new_all_corners.append(np.array(undistorted))
+    K = np.array([
+        [alpha_u,  0, u0],
+        [ 0, alpha_v, v0],
+        [ 0,  0,  1]
+    ])
 
-    return new_all_corners, k1, k2
+    rvecs = []
+    tvecs = []
+
+    idx = 6
+    for _ in range(n_images):
+        rvec = params[idx:idx+3]
+        tvec = params[idx+3:idx+6]
+        rvecs.append(rvec)
+        tvecs.append(tvec)
+        idx += 6
+
+    return K, k1, k2, rvecs, tvecs
+
+def reprojection_residuals(params, all_world_corners, all_observed_corners):
+    """
+    world_points: (N, 3)
+    """
+
+    n_images = len(all_observed_corners)
+    K, k1, k2, rvecs, tvecs = unpack_params(params, n_images)
+
+    residuals = []
+
+    for i in range(n_images):
+        proj = project_with_distortion(
+            all_world_corners[i],
+            K,
+            rvecs[i],
+            tvecs[i],
+            k1,
+            k2
+        )
+
+        obs = all_observed_corners[i]
+        residuals.append((proj - obs).ravel())
+
+    return np.concatenate(residuals)
 
 def compute_reprojection_error(images_path, grid_size, all_projected_corners):
     total_error = 0
