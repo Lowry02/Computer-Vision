@@ -513,7 +513,8 @@ def undistort_point(u_hat, v_hat, K, k1, k2, n_iter=10):
     return new_u, new_v
 
 def project_with_distortion(world_corners, K, rvec, tvec, k1, k2):
-    R = get_R_from_axis(rvec)
+    # R = get_R_from_axis(rvec)
+    R, _ = cv2.Rodrigues(rvec)
     Xc = (R @ world_corners.T).T + tvec
     x = Xc[:, 0] / Xc[:, 2]
     y = Xc[:, 1] / Xc[:, 2]
@@ -571,10 +572,6 @@ def unpack_params(params, n_images):
     return K, k1, k2, rvecs, tvecs
 
 def reprojection_residuals(params, all_world_corners, all_observed_corners):
-    """
-    world_points: (N, 3)
-    """
-
     n_images = len(all_observed_corners)
     K, k1, k2, rvecs, tvecs = unpack_params(params, n_images)
 
