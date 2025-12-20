@@ -1,24 +1,20 @@
 import numpy as np
 import cv2
 
-def get_corners_jack(img_path:str, grid_size:tuple) -> np.ndarray:
-    img = cv2.imread(img_path)
-    return_value, corners = cv2.findChessboardCorners(img, patternSize=grid_size, corners=None) # type: ignore
-    corners=corners.reshape((88,2)).copy()
-    if return_value:
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        criteria = (cv2.TERM_CRITERIA_MAX_ITER | cv2.TERM_CRITERIA_EPS, 100, 0.001) # tuple for specifying the termination criteria of the iterative refinement procedure cornerSubPix()
-        cv2.cornerSubPix(gray,corners,(5,5),(-1,-1),criteria)
-    return corners
-
 def get_corners(img_path:str, grid_size:tuple) -> np.ndarray:
     img = cv2.imread(img_path)
-    return_value, corners = cv2.findChessboardCorners(img, patternSize=grid_size, corners=None) # type: ignore
-    if not return_value:
+    return_value, corners = cv2.findChessboardCorners(img, patternSize=grid_size)
+    corners = corners.reshape((grid_size[0] * grid_size[1],2))
+    if return_value:
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        # tuple for specifying the termination criteria of the iterative refinement procedure cornerSubPix()
+        criteria = (cv2.TERM_CRITERIA_MAX_ITER | cv2.TERM_CRITERIA_EPS, 100, 0.001)
+        cv2.cornerSubPix(gray,corners,(5,5),(-1,-1),criteria)
+    else:
         raise Exception(f"Corners not found in image {img_path}")
-    return corners.squeeze(1)
+    return corners
 
-def get_homography(img_path:str, grid_size, square_size, corners = None) -> tuple[np.ndarray, np.ndarray]:
+def get_homography(img_path:str, grid_size:tuple, square_size:int) -> np.ndarray:
     """
     Computes the homography matrix for a checkerboard pattern in an image.
     This function reads an image containing a checkerboard pattern, detects the corners of the pattern,
@@ -31,9 +27,7 @@ def get_homography(img_path:str, grid_size, square_size, corners = None) -> tupl
         square_size (int, optional): Size of each square in the checkerboard grid, in millimeters. 
             Default is 11.
     Returns:
-        tuple: A tuple containing:
-            - A (np.ndarray): The matrix of linear equations used to compute the homography.
-            - H (np.ndarray): The computed 3x3 homography matrix.
+        H (np.ndarray): The computed 3x3 homography matrix.
     Raises:
         AssertionError: If `img_path` is not a string, `grid_size` is not a tuple, `square_size` 
             is not an integer, or `grid_size` does not have exactly two elements.
@@ -50,8 +44,7 @@ def get_homography(img_path:str, grid_size, square_size, corners = None) -> tupl
     assert isinstance(square_size, int), f"square_size is not a int: type {type(square_size)}."
     assert len(grid_size) == 2, f"grid_size has dimension {len(grid_size)}: expected 2."
     
-    if corners is None:
-        corners = get_corners(img_path, grid_size)
+    corners = get_corners(img_path, grid_size)
         
     # CONSTRUCT A
     A = []
@@ -65,8 +58,8 @@ def get_homography(img_path:str, grid_size, square_size, corners = None) -> tupl
         u_index, v_index = np.unravel_index(index, grid_size_cv2)  # the first corner is at position (0,0), the second (0,1)
         
         # finding the (x,y) coordinates wrt the checkerboard
-        x_mm = (u_index) * square_size
-        y_mm = (v_index) * square_size
+        x_mm = u_index * square_size
+        y_mm = v_index * square_size
         
         eq_1 = [x_mm, y_mm, 1, 0, 0, 0, -u_coord*x_mm, -u_coord*y_mm, -u_coord]
         eq_2 = [0, 0, 0, x_mm, y_mm, 1, -v_coord*x_mm, -v_coord*y_mm, -v_coord]
@@ -76,19 +69,18 @@ def get_homography(img_path:str, grid_size, square_size, corners = None) -> tupl
 
     # evaluating the SVD of A
     A = np.array(A)
-    _, _, V = np.linalg.svd(A, full_matrices=False) # fill_matrices = False -> no padding and faster
+    _, _, V = np.linalg.svd(A, full_matrices=False) # full_matrices = False -> no padding and faster
 
     # V is transposed so the values of H are in the last row
     H = V[-1, :].reshape(3,3)
-    return A, H
+    return H
 
 def get_v_vector(H:np.ndarray, i:int, j:int) -> np.ndarray:
-    """_summary_
-
+    """
     Args:
-        H (_type_): Homography matrix
-        i (_type_): can be 1 or 2
-        j (_type_): can be 1 or 2
+        H (np.ndarray): Homography matrix
+        i (int): can be 1 or 2
+        j (int): can be 1 or 2
 
     Returns:
         np.array: returns the vector v transposed (dimension = (6,))
@@ -142,7 +134,7 @@ def get_intrinsic(V:np.ndarray) -> np.ndarray:
     assert V.shape[1] == 6, f"V does not have 6 columns: shape {V.shape}."
     
     _, _, S = np.linalg.svd(V, full_matrices=False) # full_matrices = False -> no padding and faster
-    B = S[-1, :]  # S is transposed so the values of B are in the last row
+    B = S[-1, :] # S is transposed so the values of B are in the last row
     B /= B[-1]
     
     # __________ CHOLESKY __________
@@ -154,7 +146,6 @@ def get_intrinsic(V:np.ndarray) -> np.ndarray:
     L = np.linalg.cholesky(B.reshape(3, 3))
     K = np.linalg.inv(L.transpose())
     K = K / K[2,2]
-    # K[2, 2] = 1.0
     return K
 
 
@@ -185,6 +176,7 @@ def get_extrinsic(K:np.ndarray, H:np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     lam = 1 / np.linalg.norm(K_inv @ H[:, 0])
 
     t = lam * K_inv @ H[:, 2]
+    # checking t[2] < 0 in order to understand whether the object is considered behind the camera, in which case coords would be inverted 
     if t[2] < 0:
         t = -t
         lam = -lam
@@ -193,9 +185,9 @@ def get_extrinsic(K:np.ndarray, H:np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     r2 = lam * K_inv @ H[:, 1]
     r3 = np.linalg.cross(r1, r2)
 
-    R = np.stack([r1,r2,r3]).transpose()
-    # R = np.column_stack((r1, r2, r3))
+    R = np.column_stack((r1, r2, r3))
 
+    # since R might not be orthonormal after the estimation phase, take the closest matrix that satisfies the properties
     U, _, Vt = np.linalg.svd(R) # SVD-based orthonormalization to ensure orthonormal columns and det(R) = +1
     R = U @ Vt
 
@@ -221,19 +213,32 @@ def get_projection_matrix(K: np.ndarray, R: np.ndarray, t: np.ndarray) -> np.nda
     assert isinstance(t, np.ndarray), f"t is not a numpy array: type {type(t)}."
     assert t.shape in [(3,), (3, 1)], f"t does not have shape (3,) or (3,1): shape {t.shape}."
     
-    G = np.zeros((3, 4))
-    G[:, :3] = R
-    G[:, 3] = t
+    G = np.column_stack((R, t))
     return  K @ G
 
 def project(points:np.ndarray, P:np.ndarray) -> np.ndarray:
     if len(points.shape) == 1:
         points = np.expand_dims(points, axis=0)
     
+    # directly compute normalised projections
     projected_u = (P[0, :] @ points.transpose()) / (P[2, :] @ points.transpose())
     projected_v = (P[1, :] @ points.transpose()) / (P[2, :] @ points.transpose())
     
     return np.stack([np.array([u, v]) for u, v in zip(projected_u, projected_v)])
+
+def compute_reprojection_error(all_observed_corners, all_projected_corners):
+    total_error = 0
+    total_points = 0
+
+    for i in range(len(all_observed_corners)):
+        observed_corners = all_observed_corners[i]
+        for j, (u_proj, v_proj) in enumerate(all_projected_corners[i]):
+            u_obs, v_obs = observed_corners[j]
+            err = np.sqrt((u_obs - u_proj)**2 + (v_obs - v_proj)**2)
+            total_error += err
+            total_points += 1
+
+    return total_error, total_error / total_points
     
 def superimpose_cylinder(
     img_path: str, 
@@ -284,35 +289,35 @@ def superimpose_cylinder(
     assert num_sides >= 3, f"num_sides is less than 3: value {num_sides}."  
 
     
-    # Generation of 3D Points 
+    # 3D Points 
     theta = np.linspace(0, 2 * np.pi, num_sides, endpoint=False)
     z_slices = np.linspace(0, height, num_height_slices) 
     points_3d = []
 
-    # Perimetral points for each height slice
+    # perimetral points for each height slice
     for z in z_slices:
         x = center_x + radius * np.cos(theta)
         y = center_y + radius * np.sin(theta)
         Z = np.full_like(x, z)
-        # Coordinate omogenee [x, y, z, 1]
+        # homogeneous coords [x, y, z, 1]
         homogeneous_slice = np.vstack((x, y, Z, np.ones_like(x))).T
         points_3d.append(homogeneous_slice)
 
-    # Bottom slice (Z = 0)
+    # bottom slice (Z = 0)
     x_base = center_x + radius * np.cos(theta)
     y_base = center_y + radius * np.sin(theta)
     base_points = np.stack([x_base, y_base, np.zeros_like(x_base), np.ones_like(x_base)], axis=1)
     points_3d.append(base_points)
 
-    # Top slice (Z = height)
+    # top slice (Z = height)
     x_top = center_x + radius * np.cos(theta)
     y_top = center_y + radius * np.sin(theta)
-    top_points = np.stack([x_top, y_top, np.full_like(x_top, height), np.ones_like(x_top)], axis=1)    # TODO: Z axis is inverted
+    top_points = np.stack([x_top, y_top, np.full_like(x_top, height), np.ones_like(x_top)], axis=1)
     points_3d.append(top_points)
     
     object_points = np.concatenate(points_3d, axis=0) # shape (N, 4)
     
-    # Pojection of 3D Points onto the Image Plane
+    # projection of 3D Points onto the Image Plane
     img = cv2.imread(img_path)
     if img is None:
         raise FileExistsError(f"Cannot find the image file at {img_path}.")
@@ -323,21 +328,18 @@ def superimpose_cylinder(
     
     projected_points = np.stack([u, v], axis=1).astype(np.int32) 
 
-    # Base
+    # base
     base_start_idx = projected_points.shape[0] - 2 * num_sides
     base_points_proj = projected_points[base_start_idx : base_start_idx + num_sides]
+    cv2.polylines(img, [base_points_proj], isClosed=True, color=(0, 0, 255), thickness=2)
     
-    # Top
+    # top
     top_points_proj = projected_points[base_start_idx + num_sides : ]
-
-    # Drawing base
-    cv2.polylines(img, [base_points_proj], isClosed=True, color=(0, 0, 255), thickness=2) 
+    cv2.polylines(img, [top_points_proj], isClosed=True, color=(0, 255, 0), thickness=2)
     
-    # Drawing top
-    cv2.polylines(img, [top_points_proj], isClosed=True, color=(0, 255, 0), thickness=2) 
     center_projection = project(np.array([center_x, center_y, 0, 1]), P)[0]
     cv2.circle(img, (int(center_projection[0].round()), int(center_projection[1].round())), radius=5, color=(255, 0, 0), thickness=-1)
-    # Drawing vertical sides
+    # vertical sides
     side_idxs = np.linspace(0, num_sides - 1, num_sides, dtype=int)
     for side in side_idxs:
         pt_base = base_points_proj[side]
@@ -365,8 +367,8 @@ def get_rot_axis_from_R(R: np.ndarray) -> tuple[np.ndarray, float]:
     assert R.shape == (3, 3), f"R does not have shape (3, 3): shape {R.shape}."
     
     theta = float(np.arccos((np.trace(R) - 1) / 2))
-    # if abs(theta) < 1e-8:
-    #     return np.zeros(3), 0.0
+    if abs(theta) < 1e-8:
+        return np.zeros(3), 0.0
     _r = np.array([
         R[2,1] - R[1,2],
         R[0,2] - R[2,0],
@@ -400,8 +402,8 @@ def get_R_from_axis(r: np.ndarray) -> np.ndarray:
     assert r.shape == (3,), f"r does not have shape (3,): shape {r.shape}."
     
     theta = np.linalg.norm(r)
-    # if theta < 1e-8:
-    #     return np.eye(3)
+    if theta < 1e-8:
+        return np.eye(3)
     r = r / theta
     # cross product matrix
     r_x = np.stack([
@@ -437,9 +439,9 @@ def compute_residuals(params: np.ndarray, checkerboard_world_corners: np.ndarray
     assert checkerboard_image_corners.ndim == 3 and checkerboard_image_corners.shape[2] == 2, f"checkerboard_image_corners must have shape (n_images, n_points, 2): shape {checkerboard_image_corners.shape}."
     
     n_images = (len(params) - 5) // 3 // 2
-    alpha_u, skew, u_0, alpha_v, v_0 = params[:5]
+    alpha_u, gamma, u_0, alpha_v, v_0 = params[:5]
     K = np.stack([
-        [alpha_u, skew, u_0],
+        [alpha_u, gamma, u_0],
         [0, alpha_v, v_0],
         [0, 0, 1],
     ])
@@ -467,7 +469,7 @@ def get_radial_distorsion(images_path, grid_size, square_size, K, all_P):
 
     grid_size_cv2 = tuple(reversed(grid_size))
     for i, img in enumerate(images_path):
-        corners = get_corners_jack(img, grid_size)
+        corners = get_corners(img, grid_size)
         for index, corner in enumerate(corners):
             # Get the projected points
             u_hat = corner[0]
@@ -490,31 +492,10 @@ def get_radial_distorsion(images_path, grid_size, square_size, K, all_P):
     A = np.array(A)
     b = np.array(b)
 
-    # Solve the system to obtain k1 and k2
+    # solve the system to obtain k1 and k2
     k, _, _, _ = np.linalg.lstsq(A, b, rcond=None)
     k1, k2 = k
     return k1, k2
-
-def undistort_point(u_hat, v_hat, K, k1, k2, n_iter=10):
-    alpha_u = K[0,0]
-    alpha_v = K[1,1]
-    u0 = K[0,2]
-    v0 = K[1,2]
-
-    # initial guess: assume no distortion
-    new_u = u_hat
-    new_v = v_hat
-
-    for _ in range(n_iter):
-        x = (new_u - u0) / alpha_u
-        y = (new_v - v0) / alpha_v
-        r2 = x*x + y*y
-        radial = 1 + k1*r2 + k2*r2*r2
-
-        new_u = u0 + (u_hat - u0) / radial
-        new_v = v0 + (v_hat - v0) / radial
-
-    return new_u, new_v
 
 def project_with_distortion(world_corners, K, rvec, tvec, k1, k2):
     R = get_R_from_axis(rvec)
@@ -594,17 +575,3 @@ def reprojection_residuals(params, all_world_corners, all_observed_corners):
         residuals.append((proj - obs).ravel())
 
     return np.concatenate(residuals)
-
-def compute_reprojection_error(all_observed_corners, all_projected_corners):
-    total_error = 0
-    total_points = 0
-
-    for i in range(len(all_observed_corners)):
-        observed_corners = all_observed_corners[i]
-        for j, (u_proj, v_proj) in enumerate(all_projected_corners[i]):
-            u_obs, v_obs = observed_corners[j]
-            err = np.sqrt((u_obs - u_proj)**2 + (v_obs - v_proj)**2)
-            total_error += err
-            total_points += 1
-
-    return total_error / total_points
