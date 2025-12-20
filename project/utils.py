@@ -365,6 +365,8 @@ def get_rot_axis_from_R(R: np.ndarray) -> tuple[np.ndarray, float]:
     assert R.shape == (3, 3), f"R does not have shape (3, 3): shape {R.shape}."
     
     theta = float(np.arccos((np.trace(R) - 1) / 2))
+    # if abs(theta) < 1e-8:
+    #     return np.zeros(3), 0.0
     _r = np.array([
         R[2,1] - R[1,2],
         R[0,2] - R[2,0],
@@ -398,6 +400,8 @@ def get_R_from_axis(r: np.ndarray) -> np.ndarray:
     assert r.shape == (3,), f"r does not have shape (3,): shape {r.shape}."
     
     theta = np.linalg.norm(r)
+    # if theta < 1e-8:
+    #     return np.eye(3)
     r = r / theta
     # cross product matrix
     r_x = np.stack([
@@ -513,8 +517,7 @@ def undistort_point(u_hat, v_hat, K, k1, k2, n_iter=10):
     return new_u, new_v
 
 def project_with_distortion(world_corners, K, rvec, tvec, k1, k2):
-    # R = get_R_from_axis(rvec)
-    R, _ = cv2.Rodrigues(rvec)
+    R = get_R_from_axis(rvec)
     Xc = (R @ world_corners.T).T + tvec
     x = Xc[:, 0] / Xc[:, 2]
     y = Xc[:, 1] / Xc[:, 2]
@@ -592,12 +595,12 @@ def reprojection_residuals(params, all_world_corners, all_observed_corners):
 
     return np.concatenate(residuals)
 
-def compute_reprojection_error(images_path, grid_size, all_projected_corners):
+def compute_reprojection_error(all_observed_corners, all_projected_corners):
     total_error = 0
     total_points = 0
 
-    for i, img in enumerate(images_path):
-        observed_corners = get_corners_jack(img, grid_size)
+    for i in range(len(all_observed_corners)):
+        observed_corners = all_observed_corners[i]
         for j, (u_proj, v_proj) in enumerate(all_projected_corners[i]):
             u_obs, v_obs = observed_corners[j]
             err = np.sqrt((u_obs - u_proj)**2 + (v_obs - v_proj)**2)
