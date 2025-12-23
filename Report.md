@@ -7,29 +7,30 @@
 ### Introduction
 
 The **camera calibration problem** consists in estimating the intrinsic and extrinsic parameters of a camera through several measurements.  
-The outcome of these calculations is the **Perspective Projection Matrix** \( P \), which can be written as:
+The outcome of these calculations is the **Perspective Projection Matrix** \( $P$ \), which can be written as:
 
-P = K [ R | t ]
+$$P = K [ R | t ]$$
 
 Here:
 
-- **\( K \)** is the intrinsic matrix, containing the internal parameters of the camera (specific to the camera itself), like the .  
-- **\( R \)** and **\( t \)** are respectively the rotation matrix and the translation vector, describing the camera pose for a specific image relative to the **World Reference Frame**.
-Once that these parameters are found, many computer vision tasks can be performed, such as **Triangulation**, **Structure from motion**, **Camera pose**, **Stereoscopy** and many other things that have become more and more popular and usefull nowadays.
+- **\( $K$ \)** is the intrinsic matrix, containing the internal parameters of the camera (specific to the camera itself);
+- **\( $R$ \)** and **\( $t$ \)** are respectively the rotation matrix and the translation vector, describing the camera pose;
+
+Once that these parameters are found, many computer vision tasks can be performed, such as **Triangulation**, **Structure from motion**, **Camera pose**, **Stereoscopy** and many other.
 
 ### Task 1 - Zhang's Calibration method 
-It is required to calibrate (so to find the unique K and a pair [R | t] for each image) using the Zhang's procedure, which is based on a key principle: instead of requiring a single image of many non-coplanar points (as is necessary for Direct Linear Transform, or DLT, methods), Zhang's approach utilizes multiple images (at least three) of a simple planar calibration pattern.
+It is required to calibrate (so to find the unique K and a pair $[R | t]$ for each image) using the Zhang's procedure, which is based on a key principle: instead of requiring a single image of many non-coplanar points (as is necessary for Direct Linear Transform, or DLT, methods), Zhang's approach utilizes multiple images (at least three) of a simple planar calibration pattern.
 In our case we are provided with 81 images of a checkerboard, each image is taken from a different point in the World reference frame. 
-The foundation of Zhang's method relies on establishing a mathematical relationship, known as a **homography** (H), between the known 3D plane in the scene and its 2D perspective projection onto the image plane.
+The foundation of Zhang's method relies on establishing a mathematical relationship, known as a **homography** ($H$), between the known 3D plane in the scene and its 2D perspective projection onto the image plane.
 First of all, we needed to import **numpy** and **OpenCV** libraries to our code: 
 
 Then we followed the **LabLecture_1** steps to find the keypoints between the given images. We defined a function **get_corners** in which we utilized the function **findChessboardCorners** from OpenCV library, getting the corresponcences we need to estimate the **homography**:
 
 The function **get_corners** is then called inside another function we wrote, **get_homography**, to compute the homography matrix H that allows us to map 3D points on a calibration pattern (the checkerboard) to 2D pixel coordinates in an image. It implements the Direct Linear Transform (DLT) algorithm, which is the first fundamental step in Zhang’s calibration procedure:
 
-  -It first calls get_corners to detect the (u, v) pixel coordinates of the checkerboard corners in the provided image.
-  -It generates the corresponding world coordinates (x, y) in millimeters by multiplying the grid indices by the square_size (11mm in our case). It assumes the board lies on the Z=0 plane.
-  -It builds a system of linear equations Ah = 0. Each detected corner contributes due rows to matrix A, representing the relationship:
+- It first calls get_corners to detect the $(u, v)$ pixel coordinates of the checkerboard corners in the provided image.
+- It generates the corresponding world coordinates $(x, y)$ in millimeters by multiplying the grid indices by the square_size (11mm in our case). It assumes the board lies on the $Z=0$ plane.
+- It builds a system of linear equations $Ah = 0$. Each detected corner contributes due rows to matrix $A$, representing the relationship:
 
 $$
 \begin{bmatrix}
@@ -38,8 +39,8 @@ x & y & 1 & 0 & 0 & 0 & -ux & -uy & -u \\
 \end{bmatrix}
 $$
 
-  -SVD Solver:  It uses Singular Value Decomposition to solve the system. The homography parameters are found in the last row of the V matrix (the right-singular vector associated with the smallest singular value).
-  -Output: The resulting 9-element vector is reshaped into the final 3x3 Homography matrix.
+- SVD Solver:  It uses Singular Value Decomposition to solve the system. The homography parameters are found in the last row of the V matrix (the right-singular vector associated with the smallest singular value).
+- Output: The resulting 9-element vector is reshaped into the final 3x3 Homography matrix.
 
 
 
@@ -57,11 +58,11 @@ H_{3i}H_{3j}
 $$
 
 
-After that, we wrote other two functions, respectively **get_intrinsic** and **get_extrinsic**, which will compute the both K and the pair [R | t].
-The first one computes the Singular Value Decomposition (SVD) of the constraints matrix V (in which are stacked 2n x 6 equations, given n planes), then extracts from it the smallest singular vector which will be the solution to the problem. Later on, it performs Cholesky decomposition, finally finding K matrix.
+After that, we wrote other two functions, respectively **get_intrinsic** and **get_extrinsic**, which will compute the both $K$ and the pair $[R | t]$.
+The first one computes the Singular Value Decomposition (SVD) of the constraints matrix $V$ (in which are stacked 2n x 6 equations, given n planes), then extracts from it the smallest singular vector which will be the solution to the problem. Later on, it performs Cholesky decomposition, finally finding K matrix.
 
 
-Meanwhile, the latter computes column-wise the rotation matrix R and t, starting from the fact that P = [R | t] = K [r1 r2 r3 | t].
+Meanwhile, the latter computes column-wise the rotation matrix R and t, starting from the fact that $P = [R | t] = K [r1 \ r2 \ r3 | t]$.
 
 
 Later on the realization of the project, we had to add this portion of code to the function 
@@ -70,12 +71,12 @@ Later on the realization of the project, we had to add this portion of code to t
         t = -t
         lam = -lam
 ```
-This had to be done because there exists two possible solutions to the problem when computing extrinsics, but only one has the right physical meaning: in fact, being the checkerboard in front of the camera, we expect the value of t_z to be positive (since we defined the camera reference frame this way, with Z > 0), but sometimes this was not true, and in the superimposition task we observed that for some images, the value was negative and the cylinder was entering the frame rather that getting out; this corresponded to the WRF to be considered behind the camera, which is clearly unfeasable. So, we are able to detect the wrong solution by checking this value and correct it taking the opposite, which means taking the opposite scale factor **lambda**. 
+This had to be done because there exists two possible solutions to the problem when computing extrinsics, but only one has the right physical meaning: in fact, being the checkerboard in front of the camera, we expect the value of $t_z$ to be positive (since we defined the camera reference frame this way, with $Z > 0$), but sometimes this was not true, and in the superimposition task we observed that for some images, the value was negative and the cylinder was entering the frame rather that getting out; this corresponded to the WRF to be considered behind the camera, which is clearly unfeasable. So, we are able to detect the wrong solution by checking this value and correct it taking the opposite, which means taking the opposite scale factor **lambda**. 
 
 Now that we have everything required,the full core pipeline of Zhang’s calibration method, transitioning from raw images to the estimation of camera parameters is performed: first we defined the physical properties of the checkerboard (grid dimensions and square size) and loads all available calibration images. Then, for every image we are given, a planar homography $H$ is computed to relate the world coordinates of the board to the image plane with the **get_homography** function. From each $H$, the function **get_v_vector** extracts the $v_{ij}$ vectors to enforce the orthogonality and unit scale constraints required to solve for the camera's internal geometry. These vectors are stacked into a global matrix $V$ representing a system of linear equations $Vb = 0$. The intrinsic matrix $K$ is recovered by solving the linear system and applying calling **get_intrinsics** function. In the end, using the finalized $K$ and the homography as inputs of **get_extrinsics**, we find the specific rotation ($R$) and translation ($t$) of the camera relative to the calibration board.
 
 
-### Task 2 - Total Reprojection Error 
+### Task 2 - Total Reprojection Error
 For this task we are required to choose one of the calibration images and compute the total reprojection
 error, which quantifies the projection error, i.e. the distance between the projections (coordinates) of the measured image points and the projections estimated by the geometric model of the camera (perspective projection matrix P). This job is asked to be done for each grid point and to visualize it. 
 To realize that, first of all we defined the function **get_projection_matrix** to compute the P matrix for an image given intrinsics and extrinsics parameters: 
@@ -104,7 +105,7 @@ The results we got for image 0, shown as an example, were the following:
 The second data is the most interesting: a value of 0.26 means that, on average, the points that the geometric model predicts are located on the image are about a quarter of a pixel away from their actual position in the image. This is considered a good result overall, meaning that the camera model is geometrically accurate.
 
 
-### Task 3 - Superimposing a cylinder 
+### Task 3 - Superimposing a cylinder
 The next task requires to superimpose an object, in this case a cylinder, on 25 checkerboards and visualize the correctness of the previous computations and results. 
 To complete the task, we defined the **superimpose_cylinder** function. This function creates a 3D cylinder and renders it onto a specific image. First, it generates a set of 3D points in homogeneous coordinates based on a provided radius, height, and center position ($x, y$) on the world plane. The cylinder is approximated using a user-defined number of sides and vertical slices. Then, using the camera's projection matrix $P$, these 3D points are mapped onto the 2D image plane. Finally, the function uses OpenCV's **polylines** function to draw the cylinder's structure. 
 
@@ -127,132 +128,41 @@ In the execution code of the task we recalled the **get_projection_matrix** for 
 </div>
 
 ### Task 4 - Standard deviation of principal point 
-In this exercize it is requested to plot the standard deviation of the entries u_0 and v_0 of calibration matrix K as a function of the images processed to compute the intrinsics parameters. The minimum number of planes required to compute K is 3; and for some combination of images the matrix K could be not positive definite, so not feasable for computations (Cholesky). In the following code, for each number of images, multiple random subsets are sampled and used to compute the intrinsic matrix. The standard deviation of the principal point coordinates (u_0 and v_0) across samples is then computed and plotted, showing how the estimation variance decreases as more images are used. As we can see, as soon as the image group consists of only 6-7 elements, the standard deviation is minimal.
+The principal point is the point $(u_0, v_0)$ on the image where the camera’s optical axis intersects the image plane. It is one of the intrinsic parameters so the matrix $K$ contains it:
 
-```python
-random.seed(0)
-max_N_images = 20
-N_images = list(range(3, max_N_images + 1))
-n_samples = 100
+$$
+K = \begin{bmatrix} 
+\alpha_u & \alpha_u \cot\omega & u_0 \\ 
+0 & \alpha_v / \sin\omega & v_0 \\ 
+0 & 0 & 1 
+\end{bmatrix}
+$$
 
-# since V is a stack of two equations per image,
-# I can use them to compute K instead of recomputing V each time
-index_to_select = list(range(0, len(V), 2))
+The exercise asks to analyze how much the uncertainty of the principal point changes while the number of images used to estimate the camera intrinsic is increased. To do so, a statistical approach is used: several batches of images of size $n\_images \in \{a, \dots, b\}$ are randomly sampled and the standard deviation of $(u_0, v_0)$ is computed for each batch size. We think that this approach is more fair with respect to the combinatorial one, in which all the possible combinations of batches of dimension $n\_images$ are considered to compute the standard deviation. In fact, fixing the number of samples to $n\_samples$ permits to the first approach to create the same number of batches for each size, making the comparison more trustable. This key point is not present in the combinatorial one, in fact there exist more combination of $n$ images than $n+1$. Morover, the computation is more ligtweight, making the code faster to execute. 
 
-u0_std = []
-v0_std = []
+In what follows, we can see the results obtained by executing the previous explained approach using $n\_samples = 100$. Since the minimum number of images required to compute the camera intrinsic with the Zhang's method is $3$ and $20$ images are enough to show the standard deviation trend, $n\_images \in \{3, \dots, 20\}$ is selected.
 
-for n_images in range(3, max_N_images + 1):
-    current_sample = 1
-    principal_point_coord = []
-    while current_sample <= n_samples:
-        selected_images = np.array(random.sample(index_to_select, n_images))
-        _V = np.concatenate([V[selected_images], V[selected_images + 1]])
+![Standard Deviation vs N Images](imgs_for_CV_project/std_vs_nimages.png)
 
-        # some matrices could be not positive definite -> no solution
-        try:
-            K = u.get_intrinsic(np.array(_V))
-        except:
-            continue
-        
-        principal_point_coord.append([K[0,2], K[1,2]])
-        current_sample += 1
-    
-    principal_point_coord = np.stack(principal_point_coord)
-    _u0_std, _v0_std = principal_point_coord.std(axis=0)
-    u0_std.append(_u0_std.item())
-    v0_std.append(_v0_std.item())
-    
-plt.figure(figsize=(10, 6))
-plt.plot(N_images, u0_std, marker='o', label='u_0_std')
-plt.plot(N_images, v0_std, marker='o', label='v_0_std')
-plt.xlabel('Number of Images')
-plt.ylabel('Standard Deviation')
-plt.title('Standard Deviation vs Number of Images')
-plt.grid(True)
-plt.legend()
-plt.show()
-```
-
-<div style="
-  width: 50%;
-  text-align: center;
-  margin: 2em 0 3em 0;
-">
-  <img src="imgs_for_CV_project/stdv.png"
-       alt="Stvd vs Num IMgs"
-       style="display: block; margin: 0 auto; width: 800px;">
-  <div style="margin-top: 0.8em; font-style: italic;">
-    Figure 3: Standard deviation vs number of images.
-  </div>
-</div>
+The uncertainty decreases as the number of images increases: this is an expected behaviour. Using more than $7$ images does not appear to significantly improve the accuracy.
 
 ### Task 5 - Comparing the estimated R,t pairs
+In this task it is required to compare the obtained extrinsic parameters $R$ and $t$ with the provided ground truth. The following methods are used to compute the errors:
+- rotation matrix $R$: given two rotation matrices $R_A$ and $R_B$, the error is defined as:
+  $$|\theta| = \left|arccos\left(\frac{tr(R_A R_B) - 1}{2}\right)\right|$$
+- translation vector $t$: the error is the euclidean norm of the difference between the two vectors. 
 
-In this task it is requested to compare the extrinsics parameter previously got with the ones given by Professor, by computing the rotation matrix from frame <b>A</b> to frame <b>B</b> and the norm of the  corresponding angle of rotation. 
-Notice that, since **.yaml** files are scaled in **meters**, while ours in **millimeters**, we needed to multiply by a factor of 1000 the t vector:
+The ground truth is provided for only five images, and the t vectors are estimated in meters rather than millimeters. To account for the scale mismatch, the ground truth is multiplied by $1000$.
 
-```python
-R_errors = []
-t_errors = []
+Here are the results:
 
-for i, pose in enumerate(poses_path[:5]):
-    with open(pose, 'r') as file:
-        data = yaml.safe_load(file)
-        R = all_R[i]
-        t = all_t[i]
-        R_CS = np.array(data["R_CS"]).reshape(3,3)
-        t_CS = np.array(data["T_CS"]) * 1000    # in our code we consider millimiters, in yaml file meters
-        
-        R_AB = R_CS @ R.T
-        R_errors.append(np.absolute(np.arccos((np.trace(R_AB) - 1) / 2)))
-        t_errors.append(np.linalg.norm(t - t_CS))
-        
-# Boxplot for R_errors
-plt.figure(figsize=(10, 6))
-plt.boxplot(R_errors, tick_labels=['R_errors'])
-plt.ylabel('Error - Angle in radians')
-plt.title('R Errors')
-plt.grid(True)
-plt.show()
+![Ground truth comparison](imgs_for_CV_project/ground_truth_comparison.png)
 
-# Boxplot for t_errors
-plt.figure(figsize=(10, 6))
-plt.boxplot(t_errors, tick_labels=['t_errors'])
-plt.ylabel('Error - Euclidean Distance')
-plt.title('t Errors')
-plt.grid(True)
-plt.show()
-```
+Analyzing the boxplots, it is clear that:
+- Rotation (R Errors): The boxplot shows a very high, yet extremely stable, error centered around 3.13 radians. This value is approximately equal to $\pi$, indicating a systematic 180° rotation. This suggests a consistent difference in coordinate system conventions (e.g., the direction of the Z-axis) between the two models rather than a failure in the calibration itself;
+- Translation (t Errors): The translation error fluctuates between 7.5 mm and 12.2 mm, with a median near 11 mm. This indicates a metric discrepancy likely caused by slight variations in the estimation of the camera's distance from the board;
+- Stability: Both plots exhibit relatively small "whiskers," which implies that the calibration algorithm is robust and consistent across different images, despite the fixed orientation bias.
 
-<div style="display: flex; justify-content: center; align-items: flex-start; gap: 20px; background-color: #0d1117; padding: 2em; border-radius: 8px;">
-
-  <div style="flex: 1; max-width: 400px; text-align: left;">
-    <img src="imgs_for_CV_project/R_errors.png" 
-         alt="R errors" 
-         style="width: 50%; height: auto; display: block; border-radius: 2px;">
-    <div style="color: white; margin-top: 10px; font-family: sans-serif; font-size: 0.95em;">
-      Figure 4: R errors boxplot.
-    </div>
-  </div>
-
-  <div style="flex: 1; max-width: 400px; text-align: left;">
-    <img src="imgs_for_CV_project/t_errors_good.png" 
-         alt="t errors" 
-         style="width: 50%; height: auto; display: block; border-radius: 2px;">
-    <div style="color: white; margin-top: 10px; font-family: sans-serif; font-size: 0.95em;">
-      Figure 5: t errors boxplot.
-    </div>
-  </div>
-
-</div>
-
-</div>
-
-Analyzing the boxplots, we can conclude some observations:
-  -  Rotation (R Errors): The boxplot shows a very high, yet extremely stable, error centered around 3.13 radians. This value is approximately equal to $\pi$, indicating a systematic 180° rotation. This suggests a consistent difference in coordinate system conventions (e.g., the direction of the Z-axis) between the two models rather than a failure in the calibration itself.
-  -  Translation (t Errors): The translation error fluctuates between 7.5 mm and 12.2 mm, with a median near 11 mm. This indicates a metric discrepancy likely caused by slight variations in the estimation of the camera's distance from the board or a minor scale difference in the *square_size* parameter.
-  -  Stability: Both plots exhibit relatively small "whiskers," which implies that the calibration algorithm is robust and consistent across different images, despite the fixed orientation bias.
 # TODO: discutere i risultati 
 
 ### Task 6 - Our own calibration 
