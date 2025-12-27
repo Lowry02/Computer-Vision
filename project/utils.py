@@ -248,7 +248,8 @@ def superimpose_cylinder(
     center_x: float, 
     center_y: float, 
     num_sides: int = 30, 
-    num_height_slices: int = 5
+    num_height_slices: int = 5,
+    line_thinkness: int = 2,
 ) -> np.ndarray:
     """
     Generate the 3D points of a cylinder, calculate the projection matrix and 
@@ -331,20 +332,20 @@ def superimpose_cylinder(
     # base
     base_start_idx = projected_points.shape[0] - 2 * num_sides
     base_points_proj = projected_points[base_start_idx : base_start_idx + num_sides]
-    cv2.polylines(img, [base_points_proj], isClosed=True, color=(0, 0, 255), thickness=2)
+    cv2.polylines(img, [base_points_proj], isClosed=True, color=(0, 0, 255), thickness=line_thinkness)
     
     # top
     top_points_proj = projected_points[base_start_idx + num_sides : ]
-    cv2.polylines(img, [top_points_proj], isClosed=True, color=(0, 255, 0), thickness=2)
+    cv2.polylines(img, [top_points_proj], isClosed=True, color=(0, 255, 0), thickness=line_thinkness)
     
     center_projection = project(np.array([center_x, center_y, 0, 1]), P)[0]
-    cv2.circle(img, (int(center_projection[0].round()), int(center_projection[1].round())), radius=5, color=(255, 0, 0), thickness=-1)
+    cv2.circle(img, (int(center_projection[0].round()), int(center_projection[1].round())), radius=round(2.5*line_thinkness), color=(255, 0, 0), thickness=-1)
     # vertical sides
     side_idxs = np.linspace(0, num_sides - 1, num_sides, dtype=int)
     for side in side_idxs:
         pt_base = base_points_proj[side]
         pt_top = top_points_proj[side]
-        cv2.line(img, tuple(pt_base), tuple(pt_top), color=(255, 0, 0), thickness=1)
+        cv2.line(img, tuple(pt_base), tuple(pt_top), color=(255, 0, 0), thickness=line_thinkness-1)
         
     return img
 

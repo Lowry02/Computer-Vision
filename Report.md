@@ -157,7 +157,7 @@ Here are the obtained results:
 
 In both cases, the error seems constant for each image. The Translation Error is around $10$ millimeters and it is probably due to the noise present in the estimation process. The Rotation Error, instead, needs a careful analysis. In fact, it is around $\pi = 3.14$ which represent a rotation of $180°$. This phenomena usually happens when the reference system (world or image) of the two cameras are defined differently, for instance with the axes $x$ and $y$ inverted. Because of that, a further investigation is needed.
 
-First of all, let's see how a cylinder is projected using the ground truth parameters. If the problem is due to the definition of the reference system, this test should be enough to make it visible. Here an example with the image `rgb_0.png` is shown. The respective $R$ and $t$ are used and, regarding to $K$, the one estimated in *Task 1* is selected. A cylinder centered in $(0,0)$ is projected.
+First of all, let's see how a cylinder is projected using the ground truth parameters. If the problem is due to the definition of the reference system, this test should be enough to make it visible. Here an example with the image `rgb_0.png` is shown. The respective $R$ and $t$ parameters are used and, regarding to $K$, the one estimated in *Task 1* is selected. A cylinder centered in $(0,0)$ is projected.
 
 ![Cylinder with ground truth parameters](imgs_for_CV_project/cylinder_ground_truth_params.png)
 
@@ -188,129 +188,59 @@ def get_homography(img_path:str, grid_size:tuple, square_size:int) -> np.ndarray
     ...
 ```
 
-Basically, the coordinates of the checkerboard's corners are defined inverting $x$ and $y$. This change led to the following result:
+Basically, the coordinates of the checkerboard's corners are defined with $x$ and $y$ inverted. This change led to the following result:
 
 ![Correct Ground truth comparison](imgs_for_CV_project/correct_ground_truth_comparison.png)
 
-Now the Rotation Error is around $0.02rad = 1°$: this seems to definitely confirm our hypothesis. As for the case of the Translation Error, we assess this difference to the noise present in the estimation process.
+Now the Rotation Error is around $0.02rad = 1°$: this definitely confirm our hypothesis. As for the case of the Translation Error, we assess this difference to the noise present in the estimation process.
 
 
 *Clearly, keeping the change to the `get_homography` function means defining a world reference system in which the projected objects would grow away from the camera. We think that this definition is less intuitive, so we decide to restore `get_homography` to its initial version.*
 
 ### Task 6 - Our own calibration 
 
-Point 6 requires to print a checkboard, take several images of it and estimate the parameters of our own camera.
-We took 30 HD images of a (11,18) checkerboard with a Google Pixel smartphone and followed the exact same path of the previous tasks. Of course we can't conclude much investigating extrinsics parameters??(PERCHE NO? non possiamo cercarli su internet e comparare?), but we can observe that the calibration matrix $K$ in almost every entry has higher values than the given one. 
-Moreover, by estimating the **Total Reprojection Error**, over image 0 we get a **mean error per corner** of 0.81, which is consistent with the model previously tested. 
-To assess such thing we decided to rescale the pictures taken from us (1600x1200) into the shape of those given by the professor (1280x720). Doing so, we could compare the results and confirm that the model works well, because the **total mean error per corner** for our pictures is **1.21**, while for Professor's images is **1.12**. 
+It is asked to calibrate a new camera and retrace the previous steps: in our case, our camera smartphone is used. Firstly, $30$ pictures of a $(11, 18)$ checkerboard are taken and then a copy of the previous code is created and executed. The images dimension is $4080$x$3072$.
 
-The code used, which does the scaling before the same actions performed by task 2 over all images, is the following:
-```python
-old_w, old_h = 1600, 1200
-new_w, new_h = 1280, 720
-sx = new_w / old_w
-sy = new_h / old_h
+Since the theory and implementation details are described above, here only the results are discussed. Let's break them down point by point:
+1. **Zhang's Calibration method**
 
-K_scaled = K.copy()
-K_scaled[0, 0] *= sx  # fx
-K_scaled[1, 1] *= sy  # fy
-K_scaled[0, 2] *= sx  # u0
-K_scaled[1, 2] *= sy  # v0
+    The obtained matrix $K$ is:
+    $$
+        K = \begin{bmatrix} 
+        \alpha_u = 3258.743 & s = 7.447 & u_0=2039.84 \\ 
+        0 & \alpha_vs = 3246.894 & v_0 = 1411.906 \\ 
+        0 & 0 & 1 
+        \end{bmatrix}
+    $$
+    Since $\alpha_u \approx \alpha_v$, the sensor pixel shape can be assumed to be a square. The angle between the axis $u$ and $v$, represented by $s$, is small and can be neglected. The pricipal point $(u_0, v_0)$ is vertically shifted with respect to $(\frac{4080}{2}=2040, \frac{3072}{2} = 1536)$, the expected one in an ideal camera. Even if the presence of misalignment between sensor and lenses may cause it, it is also important to notice that in modern smartphones the image captured by the sensor is not the one shown to the user. In fact, post-processing is generally applied, including also image cropping. This may also explain this notable difference in the vertical coordinate.
 
-viz_img_index = 0 
-projected_corners_viz = []
-image_to_show = None
-total_sum_error = 0.0
+2. **Total Reprojection Error**
 
-for i in range(len(all_H)):
-    img_path = images_path[i]
-    P = u.get_projection_matrix(K_scaled, all_R[i], all_t[i])
+    # TODO: fix -> not correct approach
 
-    try:
-        corners_orig = u.get_corners(img_path, grid_size)
-    except Exception:
-        continue
+    The total reprojection error obtained is $1185.53$, with a mean error per corner equal to $6.97$. Even if these values are extremely higher with respect to the one previously obtained in the project (respectively $41.28$ and $0.47$), to make a fair comparison the mean error per pixel must be considered:
+    - Old Images: $\frac{0.47}{1280 \times 720} = 5.43 \times 10^{-7}$;
+    - New Images: $\frac{6.97}{4080 \times 3072} = 5.56 \times 10^{-7}$.
 
-    grid_size_cv2 = tuple(reversed(grid_size))
-    
-    for index, corner in enumerate(corners_orig):
+    The error is basically the same. Here is an example of the corners projection:
 
-        u_coord = corner[0] * sx 
-        v_coord = corner[1] * sy
-        
-        u_index, v_index = np.unravel_index(index, grid_size_cv2)
-        point_m = np.array([u_index * square_size, v_index * square_size, 0, 1])
+    ![Corners Projection - Phone image](./imgs_for_CV_project/phone_image_corners_projection.png)
 
-        projected_u, projected_v = u.project(point_m, P)[0]
-        
-        error += (projected_u - u_coord)**2 + (projected_v - v_coord)**2
-        total_corners_count += 1
+3. **Superimposing a cylinder**
 
-        if i == viz_img_index:
-            projected_corners_viz.append((projected_u, projected_v))
+    The projection of the cylinder appears as expected in all the 25 images. An example is shown:
 
+    ![Cylinder Projection - Phone image](./imgs_for_CV_project/phone_image_cylinder_projection.png)
 
-if total_corners_count > 0:
-    print(f"Total error (all images): {error:.2f}")
-    print(f"Mean error per corner (total): {error/total_corners_count:.4f}")
+4. **Standard deviation of principal point**
 
+    ![Principal Point Standard Deviation - ](./imgs_for_CV_project/phone_image_principal_point.png)
 
-raw_img = cv2.imread(images_path[viz_img_index])
-# Important: the image must be resized to match K_scaled and the points.
-img_resized = cv2.resize(raw_img, (new_w, new_h))
-image_rgb = cv2.cvtColor(img_resized, cv2.COLOR_BGR2RGB)
+    As the number of images increases, the error decreases and reaches a plateu. The magnitude is significantly higher than the one previosuly observed in the project. In this sense, the analysis proposed in point 2 is considered valid also in this case.
 
-for cp in projected_corners_viz:
-    cv2.circle(image_rgb, (int(cp[0]), int(cp[1])), radius=3, color=(255, 0, 0), thickness=-1)
+5. **Comparing the estimated $R,t$ pairs**
 
-px.imshow(image_rgb)
-```
-
-??(DA RIVEDERE I NOMI DELLE FOTO, i numeri sono sbagliati e Lore se usiamo md penso dobbiamo aggiungere il titolo)
-<div style="
-  width: 50%;
-  text-align: center;
-  margin: 2em 0 3em 0;
-">
-  <img src="imgs_for_CV_project/new_red_dot.png"
-       alt="Ex6_red_dots"
-       style="display: block; margin: 0 auto; width: 800px;">
-  <div style="margin-top: 0.8em; font-style: italic;">
-    Figure 6: Projected corners after rescaling and calibration.
-  </div>
-</div>
-
-Then it comes to superimposing the cylinder to our own chessboard: 
-
-<div style="
-  width: 50%;
-  text-align: center;
-  margin: 2em 0 3em 0;
-">
-  <img src="imgs_for_CV_project/newplot.png"
-       alt="Cylinder_6"
-       style="display: block; margin: 0 auto; width: 800px;">
-  <div style="margin-top: 0.8em; font-style: italic;">
-    Figure 7: Superimposed cylinder on our chessboard.
-  </div>
-</div>
-
-Later on, the standard deviation of the entries `u_0` and `v_0` of calibration matrix $K$ as a function of the images processed:
-
-<div style="
-  width: 50%;
-  text-align: center;
-  margin: 2em 0 3em 0;
-">
-  <img src="imgs_for_CV_project/output.png"
-       alt="STDV"
-       style="display: block; margin: 0 auto; width: 800px;">
-  <div style="margin-top: 0.8em; font-style: italic;">
-    Figure 8: Standard Deviation of u_0 and v_0 vs number of images processed.
-  </div>
-</div>
-
-Notice that task 5 is not reported since comparing the estimates taken by Professor with ours is meaningless.
+    Since no ground truth is available for our images, this point is not performed.
 
 ### Task 7 - Minimize reprojection error
 
