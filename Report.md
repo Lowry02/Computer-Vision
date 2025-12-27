@@ -142,25 +142,60 @@ In what follows, we can see the results obtained by executing the previous expla
 
 The uncertainty decreases as the number of images increases: this is an expected behaviour. Using more than $7$ images does not appear to significantly improve the accuracy.
 
-### Task 5 - Comparing the estimated R,t pairs
+### Task 5 - Comparing the estimated $R,t$ pairs
 
 In this task it is required to compare the obtained extrinsic parameters $R$ and $t$ with the provided ground truth. The following methods are used to compute the errors:
-- rotation matrix $R$: given two rotation matrices $R_A$ and $R_B$, the error is defined as:
+- rotation matrix $R$ (**Rotation Error**): given two rotation matrices $R_A$ and $R_B$, the error is defined as:
   $$|\theta| = \left|arccos\left(\frac{tr(R_A R_B) - 1}{2}\right)\right|$$
-- translation vector $t$: the error is the Euclidean norm of the difference between the two vectors. 
+- translation vector $t$ (**Translation Error**): the error is the Euclidean norm of the difference between the two vectors. 
 
-The ground truth is provided for only five images, and the $t$ vectors are estimated in meters rather than millimeters. To account for the scale mismatch, the ground truth is multiplied by $1000$.
+The ground truth is provided for only five images and its $t$ vectors are estimated in meters rather than millimeters. To account for the scale mismatch, the ground truth is multiplied by $1000$.
 
-Here are the results:
+Here are the obtained results:
 
 ![Ground truth comparison](imgs_for_CV_project/ground_truth_comparison.png)
 
-Analyzing the boxplots, it is clear that:
-- Rotation (R Errors): The boxplot shows a very high, yet extremely stable, error centered around 3.13 radians. This value is approximately equal to $\pi$, indicating a systematic 180° rotation. This suggests a consistent difference in coordinate system conventions (e.g., the direction of the Z-axis) between the two models rather than a failure in the calibration itself;
-- Translation (t Errors): The translation error fluctuates between 7.5 mm and 12.2 mm, with a median near 11 mm. This indicates a metric discrepancy likely caused by slight variations in the estimation of the camera's distance from the board;
-- Stability: Both plots exhibit relatively small "whiskers," which implies that the calibration algorithm is robust and consistent across different images, despite the fixed orientation bias.
+In both cases, the error seems constant for each image. The Translation Error is around $10$ millimeters and it is probably due to the noise present in the estimation process. The Rotation Error, instead, needs a careful analysis. In fact, it is around $\pi = 3.14$ which represent a rotation of $180°$. This phenomena usually happens when the reference system (world or image) of the two cameras are defined differently, for instance with the axes $x$ and $y$ inverted. Because of that, a further investigation is needed.
 
-# TODO: discutere i risultati 
+First of all, let's see how a cylinder is projected using the ground truth parameters. If the problem is due to the definition of the reference system, this test should be enough to make it visible. Here an example with the image `rgb_0.png` is shown. The respective $R$ and $t$ are used and, regarding to $K$, the one estimated in *Task 1* is selected. A cylinder centered in $(0,0)$ is projected.
+
+![Cylinder with ground truth parameters](imgs_for_CV_project/cylinder_ground_truth_params.png)
+
+It is evident that:
+1. the center $(0,0)$ is not precisely located. This may be caused by the two different estimation processes used to derive $K$, $R$ and $t$. This behaviour is assumed to be normal;
+2. the cylinder is projected reversed with respect to our way of projecting, e.g. it is growing away from the camera. This seems to confirm our hypothesis.
+
+Let's try to demonstrate the last point estimating our $R$s and $t$s using $x$ and $y$ inverted. To do that, the function `get_homography` is edited as follow:
+
+```python
+# Old function
+def get_homography(img_path:str, grid_size:tuple, square_size:int) -> np.ndarray:
+    ...
+    # finding the (x,y) coordinates wrt the checkerboard
+    x_mm = u_index * square_size
+    y_mm = v_index * square_size
+    ...
+
+################### ↓ ###################
+
+# New function
+def get_homography(img_path:str, grid_size:tuple, square_size:int) -> np.ndarray:
+    ...
+    # finding the (x,y) coordinates wrt the checkerboard
+    ## inverting x and y
+    x_mm = v_index * square_size
+    y_mm = u_index * square_size
+    ...
+```
+
+Basically, the coordinates of the checkerboard's corners are defined inverting $x$ and $y$. This change led to the following result:
+
+![Correct Ground truth comparison](imgs_for_CV_project/correct_ground_truth_comparison.png)
+
+Now the Rotation Error is around $0.02rad = 1°$: this seems to definitely confirm our hypothesis. As for the case of the Translation Error, we assess this difference to the noise present in the estimation process.
+
+
+*Clearly, keeping the change to the `get_homography` function means defining a world reference system in which the projected objects would grow away from the camera. We think that this definition is less intuitive, so we decide to restore `get_homography` to its initial version.*
 
 ### Task 6 - Our own calibration 
 
