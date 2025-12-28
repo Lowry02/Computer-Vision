@@ -207,8 +207,8 @@ Since the theory and implementation details are described above, here only the r
     The obtained matrix $K$ is:
     $$
         K = \begin{bmatrix} 
-        \alpha_u = 3258.743 & s = 7.447 & u_0=2039.84 \\ 
-        0 & \alpha_vs = 3246.894 & v_0 = 1411.906 \\ 
+        \alpha_u = 3258.001 & s = 7.425 & u_0=2039.796 \\ 
+        0 & \alpha_vs = 3246.147 & v_0 = 1412.099 \\ 
         0 & 0 & 1 
         \end{bmatrix}
     $$
@@ -218,11 +218,27 @@ Since the theory and implementation details are described above, here only the r
 
     # TODO: fix -> not correct approach
 
-    The total reprojection error obtained is $1185.53$, with a mean error per corner equal to $6.97$. Even if these values are extremely higher with respect to the one previously obtained in the project (respectively $41.28$ and $0.47$), to make a fair comparison the mean error per pixel must be considered:
-    - Old Images: $\frac{0.47}{1280 \times 720} = 5.43 \times 10^{-7}$;
-    - New Images: $\frac{6.97}{4080 \times 3072} = 5.56 \times 10^{-7}$.
+    The total reprojection error obtained is $1185.65$, with a mean error per corner equal to $6.97$. Even if these values are extremely higher with respect to the one previously obtained in the project (respectively $41.28$ and $0.47$), it is important to notice that the different pixel density present in the two images can influence the perception of the error. In fact, the same pixel error is more evident in the image with lower pixel density.
 
-    The error is basically the same. Here is an example of the corners projection:
+    To perform a fair comparison, the following normalized error is computed:
+
+    $$
+    normalized\_error = \frac{\sqrt{\sum_i \left(\frac{u_i - \hat u_i}{width}\right)^2 + \left(\frac{v_i - \hat v_i}{height}\right)^2}}{n\_corners}
+    $$
+
+    where:
+    - $(\hat u_i,\hat v_i)$ are the coordinates of the projected corner;
+    - $(u_i, v_i)$ are the ground truth coordinates of the corner;
+    - $(width, height)$ are the dimensions of the image;
+    - $n\_corners$ is the number of projected corners.
+
+    In this way, each error is weighted with the respective dimension of the image, obtaining an adimensional value:
+    - Old images: $0.0005$;
+    - New images: $0.0022$.
+  
+    The error is increased of a factor of $\frac{0.0005}{0.0022} = 4.4$. Knowing that the ratio between the number of pixels of the new images and the old one is $\frac{4080\times3072}{1280\times720} = 13.6$, we consider it as an admissible error.
+
+    Here is an example of the corners projection:
 
     ![Corners Projection - Phone image](./imgs_for_CV_project/phone_image_corners_projection.png)
 

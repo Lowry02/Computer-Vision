@@ -239,6 +239,20 @@ def compute_reprojection_error(all_observed_corners, all_projected_corners):
             total_points += 1
 
     return total_error, total_error / total_points
+
+def compute_normalized_reprojection_error(all_observed_corners, all_projected_corners, width, height):
+    total_error = 0
+    total_points = 0
+
+    for i in range(len(all_observed_corners)):
+        observed_corners = all_observed_corners[i]
+        for j, (u_proj, v_proj) in enumerate(all_projected_corners[i]):
+            u_obs, v_obs = observed_corners[j]
+            err = np.sqrt(((u_obs - u_proj)/width)**2 + ((v_obs - v_proj)/height)**2)
+            total_error += err
+            total_points += 1
+
+    return total_error, total_error / total_points
     
 def superimpose_cylinder(
     img_path: str, 
