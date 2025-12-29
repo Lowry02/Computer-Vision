@@ -236,7 +236,7 @@ Since the theory and implementation details are described above, here only the r
     - Old images: $0.0005$;
     - New images: $0.0022$.
   
-    The error is increased of a factor of $\frac{0.0005}{0.0022} = 4.4$. Knowing that the ratio between the number of pixels of the new images and the old one is $\frac{4080\times3072}{1280\times720} = 13.6$, we consider it as an admissible error.
+    The error is increased of a factor of $\frac{0.0005}{0.0022} = 4.4$.
 
     Here is an example of the corners projection:
 
