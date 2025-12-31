@@ -18,7 +18,7 @@ Here:
 
 ??(SERVE SPECIFICARE? mi sembra molto una frase da GPT)Once that these parameters are found, many computer vision tasks can be performed, such as **Triangulation**, **Structure from motion**, **Camera pose**, **Stereoscopy** and many other.
 
-### Task 1 - Zhang's Calibration method
+### Task 1 - Zhang's Calibration Method
 
 It is required to calibrate the camera (thus finding the unique K and the pair $[R | t]$ for each image) by using the Zhang's procedure, which is based on a key principle: instead of using a single image of many non-coplanar points (??(NON CAPISCO SIGNIFICATO FRASE. intendi tipo "e.g: DLT method"?)as is necessary for Direct Linear Transform, or DLT, methods), Zhang's approach requires multiple images (at least three) of a simple planar calibration pattern.
 
@@ -100,7 +100,7 @@ The results we got for image 0, shown as an example, were the following:
 
 The second data is the most interesting: a value of ??(DA VEDERE)0.26 means that, on average, the points that the geometric model predicts are located on the image are about a quarter of a pixel away from their actual position in the image. This is considered a good result overall, meaning that the camera model is geometrically accurate.
 
-### Task 3 - Superimposing a cylinder
+### Task 3 - Superimposing a Cylinder
 
 The next task requires to superimpose an object, in this case a cylinder, on 25 checkerboards and to visualize the correctness of the previous computations and results. 
 To complete the task, we defined the `superimpose_cylinder` function. This function creates a 3D cylinder and renders it onto a specific image. First, it generates a set of 3D points in homogeneous coordinates based on a provided radius, height, and center position ($x, y$) on the world plane. The cylinder is approximated using a user-defined number of sides and vertical slices. Then, using the camera's projection matrix $P$, these 3D points are mapped onto the 2D image plane. Finally, the function uses OpenCV's `polylines` function to draw the cylinder's structure.
@@ -122,7 +122,7 @@ To complete the task, we defined the `superimpose_cylinder` function. This funct
   </div>
 </div>
 
-### Task 4 - Standard deviation of principal point
+### Task 4 - Standard Deviation of the Principal Point
 
 ??(MAGARI AGGIUNGERE PRIMA SPIEGAZIONE EX?)The principal point is the point $(u_0, v_0)$ on the image where the camera’s optical axis intersects the image plane. It is one of the intrinsic parameters and for this reason it is contained in the matrix $K$:
 
@@ -142,7 +142,7 @@ In what follows, we can see the results obtained by executing the previous expla
 
 The uncertainty decreases as the number of images increases: this is an expected behaviour. Using more than $7$ images does not appear to significantly improve the accuracy.
 
-### Task 5 - Comparing the estimated $R,t$ pairs
+### Task 5 - Comparing the Estimated $R,t$ Pairs
 
 In this task it is required to compare the obtained extrinsic parameters $R$ and $t$ with the provided ground truth. The following methods are used to compute the errors:
 - rotation matrix $R$ (**Rotation Error**): given two rotation matrices $R_A$ and $R_B$, the error is defined as:
@@ -197,7 +197,7 @@ Now the Rotation Error is around $0.02rad = 1°$: this definitely confirm our hy
 
 *Clearly, keeping the change to the `get_homography` function means defining a world reference system in which the projected objects would grow away from the camera. We think that this definition is less intuitive, so we decide to restore `get_homography` to its initial version.*
 
-### Task 6 - Our own calibration 
+### Task 6 - Our Own Calibration 
 
 It is asked to calibrate a new camera and retrace the previous steps: in our case, our camera smartphone is used. Firstly, $30$ pictures of a $(11, 18)$ checkerboard are taken and then a copy of the previous code is created and executed. The images dimension is $4080$x$3072$.
 
@@ -258,49 +258,58 @@ Since the theory and implementation details are described above, here only the r
 
     Since no ground truth is available for our images, this point is not performed.
 
-### Task 7 - Minimize reprojection error
+### Task 7 - Minimize Reprojection Error via MLE
 
-In this exercize it is asked to minimize the reprojection error instead of the algebrain one using **Maximum Likelihood** Estimation approach, suggested in Section 3.2 of Zhang, 2002. 
-The following code refines both intrinsic and extrinsic camera parameters by minimizing the reprojection error of checkerboard corners.  
-The 3D coordinates of the checkerboard corners are first defined in the WRF, while the corresponding 2D image points are extracted from all calibration images.  
-A non-linear least-squares optimization based on the Levenberg–Marquardt algorithm is then applied to jointly optimize the camera intrinsics, rotations (parameterized using axis–angle representation), and translations. To achieve this goal, first we had to define the function **compute_residuals** to compute the residuals between the projected checkerboard corners and the observed image corners.
+In this exercise we are asked to refine our estimations by minimising the reprojection error using the Maximum Likelihood Estimation. In fact, by following the approach described by Zhang, we are no longer simply minimising the algebraic error used in the closed-form calibration method, but we are instead minimising the sum of squared reprojection errors, which is equivalent to maximising the likelihood of the observed data.  
+It is important to note that the reprojection error measures the difference between the observed image points, which are extracted from the checkerboard images, and the projected image points obtained by projecting the known 3D checkerboard corners onto the image plane using the estimated camera parameters (and therefore the estimated projection matrix).
 
-The results show that the procedure worked well, since both the error and the mean error per corner got lower, respectively 10.32 and 0.12, against the previously gotten 23.09 and 0.26, always referring to the picture below (image[0]). 
+By following Zhang procedure, we know that the maximum likelihood estimate can be obtained by minimising the following functional: $$ \sum_{i = 1}^n\sum_{j = 1}^m ||m_{ij} - \hat m(A, R_i, t_i, M_j)||^2, $$ where $\hat m(A, R_i, t_i, M_j)$ is the projection of point $M_j$ in image $i$.  
+Thus, the optimisation minimises the sum of squared errors over all images and points: $\min_\theta \sum_{i, j}||m_{ij} - \hat m(A, R_i, t_i, M_j)||^2$, where $\theta$ is the full parameter vector: $$ \theta = \{\alpha_u, \gamma, u_0, \alpha_v, v_0, r_1, \ldots, r_N, t_1, \ldots, t_N \}, $$ where
+- $K = \begin{bmatrix} \alpha_u & \gamma & u_0 \\ 0 & \alpha_v & v_0 \\ 0 & 0 & 1 \end{bmatrix}$ 
+- $\bold{r}$ is the rotation vector in axis-angle (Rodrigues) form
+- $\bold{t}$ is the translation vector
 
-<div style="
-  width: 50%;
-  text-align: center;
-  margin: 2em 0 3em 0;
-">
-  <img src="imgs_for_CV_project/red_dots_ex_7.png"
-       alt="Corners"
-       style="display: block; margin: 0 auto; width: 800px;">
-  <div style="margin-top: 0.8em; font-style: italic;">
-    Figure 9: Projected corners after reprojection error minimization
-  </div>
-</div>
+In order to minimise our objective, we used, as suggested, the Lebenberg-Marquardt algorithm, which is conveniently implemented in the `scipy.optimize` package. Rotations are converted between matrix and axis-angle representations using Rodrigues' formula, which was implemented from scratch in the `get_rot_axis_from_R` and `get_R_from_axis` functions. So, all we did was applying the least-squares method while minimising the residuals in order to obtain the refined parameters.
 
-### Task 8 - Adding radial distorsion compensation 
-In this part, we need to add radial distorsion compensation to the basic Zhang's calibration procedure. So we based our implementation on the following formulas: 
+After convergence, the reprojection error was evaluated, as usual, on the image indexed $1$:
+- **Total Reprojection Error:** 26.31
+- **Mean Error per Corner:** 0.30
 
-$$
-\begin{cases} 
-\hat{u} = (u - u_0)(1 + k_1r_d^2 + k_2r_d^4) + u_0 \\ 
-\hat{v} = (v - v_0)(1 + k_1r_d^2 + k_2r_d^4) + v_0 
-\end{cases}
- \
-$$
+Comparing these results with the ones obtained in the Exercise 3, we can see a clear improvement: we reduced the total error from 41.28 to 26.31 and the mean error per corner from 0.41 to 0.30. We can therefore conclude that this process worked well, and it refined all the parameters of the camera, both the extrinsic and the intrinsic ones.
+??(DA AGGIUNGERE L'IMMAGINE? NON MI SEMBRA MOLTO SIGNIFICATIVA, non credo si vedrebbero molte differenze)
 
-$$
-r_d^2 = \left(\frac{u - u_0}{\alpha_u}\right)^2 + \left(\frac{v - v_0}{\alpha_v}\right)^2 \
-$$
+### Task 8 - Radial Distortion Compensation
 
-$$
-K = \begin{bmatrix} 
-\alpha_u & \alpha_u \cot\omega & u_0 \\ 
-0 & \alpha_v / \sin\omega & v_0 \\ 
-0 & 0 & 1 
-\end{bmatrix}
-$$
+In this task, we had to take into consideration the radial distortion, which is the phenomenon where straight lines appear curved in an image (especially at the periphery of the image), caused by light bending more at the lens edges than the center, making pixels shift radially inward or outward. By explicitly modeling radial lens distortion, we can compensate for it, thus making the model more accurate.
 
-### Task 9 - 
+As seen in the Professor's notes, we based our procedure on the two parameter, $k_1$ and $k_2$, radial distortion model: $$ \begin{cases} \hat{u} = (u - u_0)(1 + k_1r_d^2 + k_2r_d^4) + u_0 \\ \hat{v} = (v - v_0)(1 + k_1r_d^2 + k_2r_d^4) + v_0 \end{cases} $$ where $u, v$ are the ideal projections (in absence of radial distortion), $\hat u, \hat v$ are the actual projections and $$r_d^2 = \left(\frac{u - u_0}{\alpha_u}\right)^2 + \left(\frac{v - v_0}{\alpha_v}\right)^2$$
+
+The procedure starts by basically following the initial one: we do not consider distortion and so we estimate our parameters via homographies. This provides an initial estimate of the camera parameters under the ideal pinhole assumption.  
+Given the estimated intrinsic matrix $K$ and projection matrices $P_i$, the distortion coefficients $k_1$ and $k_2$ are estimated by solving a linear least-squares problem: for each image, we append the equation system, thus obtaining an overdetermined system: $$ A \begin{bmatrix} k_1 \\ k_2 \end{bmatrix} = b $$
+
+After estimating all the initial parameters, $K^0, R_i^0, t_i^0, P_i^0 \text{ and } k_1^0, k_2^0$, we had to refine them. To do so, we again applied the Levenberg-Marquardt algorithm to perform a nonlinear reprojection error minimisation. The optimised parameter vector included the intrinsic parameters ($\alpha_u, \alpha_v, u_0, v_0$), the radial distortion coefficients ($k_1, k_2$), the rotation and the translation vectors for each image. Again, minimising the sum of squared residuals corresponds to a Maximum Likelihood Estimation of all camera parameters, which, if we re-used Zhang's notation, would be $$ \sum_{i = 1}^n \sum_{j = 1}^m ||m_{ij} - \hat m(A, k_1, k_2, R_i, t_i, M_j)||^2 $$
+
+It is important to note that in this case the intrinsic parameter $\gamma$ was set to 0, so it was not optimised during the procedure.
+
+??(AGGIUNGERE RISULTATI? QUALI? semplicemente un print dei parametri refined?)
+
+### Task 9 - Total Reprojection Error w/ & w/o Radial Distortion Compensation
+
+The purpose of the last exercise is to quantitavely evaluate the impact of radial distortion compensation. To do so, we compared the total and mean reprojection errors of the standard pinhole camera model, with no distortion, and of the radial distortion-aware model.  
+The first model was obviously based on the parameters estimated using Zhang's method, where radial distortion was not considered, whereas the second model was based on the parameters obtained and refined in Exercise 8.
+
+For each observed corner $(u_{obs}, v_{obs})$ and corresponding projected point $(u_{proj}, v_{proj})$, the reprojection error is computed as the Euclidean distance in pixel space: $$ err = \sqrt{(u_{obs} - u_{proj})^2 + (v_{obs} - v_{proj})^2} $$
+
+The total reprojection error is obtained by summing the error over all points and images, while the mean reprohection error is normalised by the total number of corners.
+
+**Results:**
+- Model without radial distortion:
+  - Total Error: 5945.02
+  - Mean Error: 0.834
+- Model with radial distortion:
+  - Total Error: 960.08
+  - Mean Error: 0.135
+
+The mean reprojection error is reduced by more than a factor of 6, from approximately 0.83 px to 0.14 px. The total reprojection error, on the other hand, decreases by over 80%, indicating a substantial improvement.
+
+To conclude, we can see how effective radial distortion compensation in camera calibration is: while Zhang's initial estimates are valid, ignoring lens distortion leads to significant residual errors. By taking it into consideration, and refining all variables through reprojection error minimisation, we achieved far better and more accurate results, and consequently a more realistic camera model.
