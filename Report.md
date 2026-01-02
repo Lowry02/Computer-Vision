@@ -102,7 +102,7 @@ This had to be done because there exists two possible solutions to the problem w
 
 ??(SENSO FRASE)Now that we have everything required the full core pipeline of Zhang’s calibration method, transitioning from raw images to the estimation of camera parameters is performed: first we define the physical properties of the checkerboard (grid dimensions and square size) and load all the available calibration images. Then, for every image we are given, a planar homography $H$ is computed to relate the world coordinates of the board to the image plane with the `get_homography` function. ??(DA RISCRIVERE)From each $H$, the function `get_v_vector` extracts the $v_{ij}$ vectors to enforce the orthogonality and unit scale constraints required to solve for the camera's internal geometry. These vectors are stacked into a global matrix $V$, representing a system of linear equations: $Vb = 0$. The intrinsic matrix $K$ is recovered by solving the linear system, which is performed by the `get_intrinsics` function. In the end, using the finalized $K$ and the homography as inputs of `get_extrinsics`, we find the specific rotation ($R$) and translation ($t$) matrices of the camera relative to the calibration board.
 
-??(HA SENSO PRINTARE UN OUTPUT DI K, R e t DI ESEMPIO?)
+??(HA SENSO PRINTARE UN OUTPUT DI K, R e t DI ESEMPIO?) -> @@(Nell'esercizio 6.1 ho interpretato i significati dei parametri di $K$, quindi volendo si potrebbe riportare quello. Riguardo $R$ e $t$ secondo me ha meno senso.)
 
 ## Task 2 - Total Reprojection Error
 
@@ -340,7 +340,7 @@ $$\sum_{i = 1}^n \sum_{j = 1}^m ||m_{ij} - \hat m(A, k_1, k_2, R_i, t_i, M_j)||^
 
 It is important to note that in this case the intrinsic parameter $\gamma$ was set to 0, so it was not optimised during the procedure.
 
-??(AGGIUNGERE RISULTATI? QUALI? semplicemente un print dei parametri refined?) -> @@(Secondo me i print risulterebbero un po' 'buttati li'. Siccome la descirzione che fai è prettamente teorica, se ci sono delle parti di codice degne di nota potresti inserirle. In generale concluderei dicendo "lasciamo l'analisi dei risultati ottenuti all'esercizio positivo")
+??(AGGIUNGERE RISULTATI? QUALI? semplicemente un print dei parametri refined?) -> @@(Secondo me i print risulterebbero un po' 'buttati li'. Siccome la descrizione che fai è prettamente teorica, se ci sono delle parti di codice degne di nota potresti inserirle. In generale concluderei dicendo "lasciamo l'analisi dei risultati ottenuti all'esercizio positivo")
 
 ## Task 9 - Total Reprojection Error w/ & w/o Radial Distortion Compensation
 
@@ -369,4 +369,4 @@ To conclude, we can see how effective radial distortion compensation in camera c
 - Zhang, Zhengyou. A Flexible New Technique for Camera Calibration a Flexible New Technique for Camera Calibration. Vol. 10, 1999, www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr98-71.pdf.
 - Wikipedia Contributors. “Axis–Angle Representation.” Wikipedia, Wikimedia Foundation, 8 May 2020, https://en.wikipedia.org/wiki/Axis%E2%80%93angle_representation
 
-??(avente in mente altre references?)
+??(avete in mente altre references?)
