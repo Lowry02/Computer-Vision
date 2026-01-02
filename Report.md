@@ -270,6 +270,7 @@ $$\sum_{i = 1}^n\sum_{j = 1}^m ||m_{ij} - \hat m(A, R_i, t_i, M_j)||^2$$
 where $\hat m(A, R_i, t_i, M_j)$ is the projection of point $M_j$ in image $i$.
 Thus, the optimisation minimises the sum of squared errors over all images and points: $\min_\theta \sum_{i, j}||m_{ij} - \hat m(A, R_i, t_i, M_j)||^2$, where $\theta$ is the full parameter vector: 
 $$\theta = \{\alpha_u, \gamma, u_0, \alpha_v, v_0, r_1, \ldots, r_N, t_1, \ldots, t_N \}$$
+??(se non sbaglio r è composto sempre solo da 3 elementi, quindi invece di $r_1 \dots r_N$ metterei $r_1 \dots r_3$.)
 where:
 - $K = \begin{bmatrix} \alpha_u & \gamma & u_0 \\ 0 & \alpha_v & v_0 \\ 0 & 0 & 1 \end{bmatrix}$ 
 - $\bold{r}$ is the rotation vector in axis-angle (Rodrigues) form
@@ -282,7 +283,7 @@ After convergence, the reprojection error was evaluated, as usual, on the image 
 - **Mean Error per Corner:** 0.30
 
 Comparing these results with the ones obtained in the Exercise 3, we can see a clear improvement: we reduced the total error from 41.28 to 26.31 and the mean error per corner from 0.41 to 0.30. We can therefore conclude that this process worked well, and it refined all the parameters of the camera, both the extrinsic and the intrinsic ones.
-??(DA AGGIUNGERE L'IMMAGINE? NON MI SEMBRA MOLTO SIGNIFICATIVA, non credo si vedrebbero molte differenze)
+??(DA AGGIUNGERE L'IMMAGINE? NON MI SEMBRA MOLTO SIGNIFICATIVA, non credo si vedrebbero molte differenze) -> @@(Sono d'accordo che non sia significativa, penso che gli errori bastino)
 
 ### Task 8 - Radial Distortion Compensation
 
@@ -307,7 +308,7 @@ $$\sum_{i = 1}^n \sum_{j = 1}^m ||m_{ij} - \hat m(A, k_1, k_2, R_i, t_i, M_j)||^
 
 It is important to note that in this case the intrinsic parameter $\gamma$ was set to 0, so it was not optimised during the procedure.
 
-??(AGGIUNGERE RISULTATI? QUALI? semplicemente un print dei parametri refined?)
+??(AGGIUNGERE RISULTATI? QUALI? semplicemente un print dei parametri refined?) -> @@(Secondo me i print risulterebbero un po' 'buttati li'. Siccome la descirzione che fai è prettamente teorica, se ci sono delle parti di codice degne di nota potresti inserirle. In generale concluderei dicendo "lasciamo l'analisi dei risultati ottenuti all'esercizio positivo")
 
 ### Task 9 - Total Reprojection Error w/ & w/o Radial Distortion Compensation
 
@@ -331,3 +332,9 @@ The total reprojection error is obtained by summing the error over all points an
 The mean reprojection error is reduced by more than a factor of 6, from approximately 0.83 px to 0.14 px. The total reprojection error, on the other hand, decreases by over 80%, indicating a substantial improvement.
 
 To conclude, we can see how effective radial distortion compensation in camera calibration is: while Zhang's initial estimates are valid, ignoring lens distortion leads to significant residual errors. By taking it into consideration, and refining all variables through reprojection error minimisation, we achieved far better and more accurate results, and consequently a more realistic camera model.
+
+# References
+- Zhang, Zhengyou. A Flexible New Technique for Camera Calibration a Flexible New Technique for Camera Calibration. Vol. 10, 1999, www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr98-71.pdf.
+- Wikipedia Contributors. “Axis–Angle Representation.” Wikipedia, Wikimedia Foundation, 8 May 2020, https://en.wikipedia.org/wiki/Axis%E2%80%93angle_representation
+
+??(avente in mente altre references?)
