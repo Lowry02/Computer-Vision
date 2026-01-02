@@ -1,31 +1,29 @@
 # Computer Vision and Pattern Recognition Project
 
-## Lorenzo Cusin – Giacomo Serafini – Pietro Terribile
+Authors: Lorenzo Cusin – Giacomo Serafini – Pietro Terribile
 
 **AI use**
 In this project we used AI tools to:
 - write the documentation of the functions in the code;
 - ??(altro?)
 
-## Project 1 — Camera Calibration
+# Project 1 — Camera Calibration
 
-### Introduction
+## Introduction
 
 The **camera calibration problem** consists in estimating the intrinsic and extrinsic parameters of a camera through several measurements.  
 The outcome of these calculations is the **Perspective Projection Matrix** $P$, which can be written as:
 
 $$P = K [ R | t ]$$
 
-Here:
+where:
 
-- $K$ is the intrinsic matrix, containing the internal parameters of the camera (specific to the camera itself)
-- $R$ and $t$ are respectively the rotation matrix and the translation vector, describing the camera pose
+- $K$ is the intrinsic matrix, containing the internal parameters of the camera (specific to the camera itself);
+- $R$ and $t$ are respectively the rotation matrix and the translation vector, describing the camera pose.
 
-??(SERVE SPECIFICARE? mi sembra molto una frase da GPT) -> @@(Nella consegna vien)Once that these parameters are found, many computer vision tasks can be performed, such as **Triangulation**, **Structure from motion**, **Camera pose**, **Stereoscopy** and many other.
+## Task 1 - Zhang's Calibration Method
 
-### Task 1 - Zhang's Calibration Method
-
-It is required to calibrate the camera (thus finding the unique K and the pair $[R | t]$ for each image) by using the Zhang's procedure, which is based on a key principle: instead of using a single image of many non-coplanar points (??(NON CAPISCO SIGNIFICATO FRASE. intendi tipo "e.g: DLT method"?)as is necessary for Direct Linear Transform, or DLT, methods), Zhang's approach requires multiple images (at least three) of a simple planar calibration pattern.
+It is required to calibrate the camera (thus finding the unique K and the pair $[R | t]$ for each image) by using the Zhang's procedure, which is based on a key principle: instead of using a single image of many non-coplanar points ??(NON CAPISCO SIGNIFICATO FRASE) -> @@(as is necessary for basic Direct Linear Transform, or DLT, method), Zhang's approach requires multiple images (at least three) of a simple planar calibration pattern.
 
 In our case we are provided with 81 images of a checkerboard, where each image is taken from a different point in the World reference frame. 
 The foundation of Zhang's method relies on establishing a mathematical relationship, known as a **homography** ($H$), between the known 3D plane in the scene and its 2D perspective projection onto the image plane.  
@@ -77,12 +75,12 @@ This had to be done because there exists two possible solutions to the problem w
 
 ??(HA SENSO PRINTARE UN OUTPUT DI K, R e t DI ESEMPIO?)
 
-### Task 2 - Total Reprojection Error
+## Task 2 - Total Reprojection Error
 
 For this task we are required to choose one of the calibration images and compute the total reprojection
 error, i.e. the distance between the projections (coordinates) of the measured image points and the projections estimated by the geometric model of the camera (perspective projection matrix $P$).
 
-First of all, we defined the function `get_projection_matrix` to compute the $P$ matrix for an image given the intrinsics and extrinsics parameters. After that, we hat to project 3D points onto a 2D image plane using the provided projection matrix. Thus, we defined the function `project`, which collects the projected pairs ($u,v$):??(MAGARI SPIEGARE UN PO MEGLIO)
+First of all, we defined the function `get_projection_matrix` to compute the $P$ matrix for an image given the intrinsics and extrinsics parameters. After that, we had to project 3D points onto a 2D image plane using the provided projection matrix. Thus, we defined the function `project`, which collects the projected pairs ($u,v$):??(MAGARI SPIEGARE UN PO MEGLIO)
 
 At this point, the pipeline calls these functions and the quadratic error is computed. 
 
@@ -105,7 +103,7 @@ The results we got for image 0, shown as an example, were the following:
 
 The second data is the most interesting: a value of ??(DA VEDERE)0.26 means that, on average, the points that the geometric model predicts are located on the image are about a quarter of a pixel away from their actual position in the image. This is considered a good result overall, meaning that the camera model is geometrically accurate.
 
-### Task 3 - Superimposing a Cylinder
+## Task 3 - Superimposing a Cylinder
 
 The next task requires to superimpose an object, in this case a cylinder, on 25 checkerboards and to visualize the correctness of the previous computations and results. 
 To complete the task, we defined the `superimpose_cylinder` function. This function creates a 3D cylinder and renders it onto a specific image. First, it generates a set of 3D points in homogeneous coordinates based on a provided radius, height, and center position ($x, y$) on the world plane. The cylinder is approximated using a user-defined number of sides and vertical slices. Then, using the camera's projection matrix $P$, these 3D points are mapped onto the 2D image plane. Finally, the function uses OpenCV's `polylines` function to draw the cylinder's structure.
@@ -127,7 +125,7 @@ To complete the task, we defined the `superimpose_cylinder` function. This funct
   </div>
 </div>
 
-### Task 4 - Standard Deviation of the Principal Point
+## Task 4 - Standard Deviation of the Principal Point
 
 The exercise asks to analyze how much the uncertainty of the principal point changes while the number of images used to estimate the camera intrinsic is increased. The principal point is the point $(u_0, v_0)$ on the image where the camera’s optical axis intersects the image plane. It is one of the intrinsic parameters and for this reason it is contained in the matrix $K$:
 
@@ -147,7 +145,7 @@ In what follows, we can see the results obtained by executing the previous expla
 
 The uncertainty decreases as the number of images increases: this is an expected behaviour. Using more than $7$ images does not appear to significantly improve the accuracy.
 
-### Task 5 - Comparing the Estimated $R,t$ Pairs
+## Task 5 - Comparing the Estimated $R,t$ Pairs
 
 In this task it is required to compare the obtained extrinsic parameters $R$ and $t$ with the provided ground truth. The following methods are used to compute the errors:
 - rotation matrix $R$ (**Rotation Error**): given two rotation matrices $R_A$ and $R_B$, the error is defined as:
@@ -162,7 +160,7 @@ Here are the obtained results:
 
 In both cases, the error seems constant for each image. The Translation Error is around $10$ millimeters and it is probably due to the noise present in the estimation process. The Rotation Error, instead, needs a careful analysis. In fact, it is around $\pi = 3.14$ which represent a rotation of $180°$. This phenomena usually happens when the reference system (world or image) of the two cameras are defined differently, for instance with the axes $x$ and $y$ inverted. Because of that, a further investigation is needed.
 
-First of all, let's see how a cylinder is projected using the ground truth parameters. If the problem is due to the definition of the reference system, this test should be enough to make it visible. Here an example with the image `rgb_0.png` is shown. The respective $R$ and $t$ parameters are used and, regarding to $K$, the one estimated in *Task 1* is selected. A cylinder centered in $(0,0)$ is projected.
+First of all, let's see how a cylinder is projected using the ground truth parameters. If the problem is due to the definition of the reference system, this test should be enough to make it visible. Here an example with the image `rgb_0.png` is shown. The respective $R$ and $t$ from the ground truth parameters are used, while the $K$ estimated in Task 1 is selected. A cylinder centered at $(0,0)$ is then projected.
 
 ![Cylinder with ground truth parameters](imgs_for_CV_project/cylinder_ground_truth_params.png)
 
@@ -197,12 +195,12 @@ Basically, the coordinates of the checkerboard's corners are defined with $x$ an
 
 ![Correct Ground truth comparison](imgs_for_CV_project/correct_ground_truth_comparison.png)
 
-Now the Rotation Error is around $0.02rad = 1°$: this definitely confirm our hypothesis. As for the case of the Translation Error, we assess this difference to the noise present in the estimation process.
+Now the Rotation Error is around $0.02rad = 1°$: this definitely confirm our hypothesis. As for the case of the Translation Error, we assess this last difference to the noise present in the estimation process.
 
 
 *Clearly, keeping the change to the `get_homography` function means defining a world reference system in which the projected objects would grow away from the camera. We think that this definition is less intuitive, so we decide to restore `get_homography` to its initial version.*
 
-### Task 6 - Our Own Calibration 
+## Task 6 - Our Own Calibration 
 
 It is asked to calibrate a new camera and retrace the previous steps: in our case, our camera smartphone is used. Firstly, $30$ pictures of a $(11, 18)$ checkerboard are taken and then a copy of the previous code is created and executed. The images dimension is $4080$x$3072$.
 
@@ -219,7 +217,7 @@ Since the theory and implementation details are described above, here only the r
         \end{bmatrix}
     $$
 
-    Since $\alpha_u \approx \alpha_v$, the sensor pixel shape can be assumed to be a square. The angle between the axis $u$ and $v$, represented by $s$, is small and can be neglected. The pricipal point $(u_0, v_0)$ is vertically shifted with respect to $(\frac{4080}{2}=2040, \frac{3072}{2} = 1536)$, the expected one in an ideal camera. Even if the presence of misalignment between sensor and lenses may cause it, it is also important to notice that in modern smartphones the image captured by the sensor is not the one shown to the user. In fact, post-processing is generally applied, including also image cropping. This may also explain this notable difference in the vertical coordinate.
+    Since $\alpha_u \approx \alpha_v$, the sensor pixel shape can be assumed to be a square. The angle between the axis $u$ and $v$, represented by $s$, is small and can be neglected. The pricipal point $(u_0, v_0)$ is vertically shifted with respect to $(\frac{4080}{2}=2040, \frac{3072}{2} = 1536)$, the expected one in an ideal camera. Even if the presence of misalignment between sensor and lenses may cause it, it is also important to notice that in modern smartphones the image captured by the sensor is not the one shown to the user. In fact, post-processing is generally applied, including also image cropping. This may also explain the notable difference in the vertical coordinate.
 
 2. **Total Reprojection Error**
    
@@ -241,7 +239,7 @@ Since the theory and implementation details are described above, here only the r
     - Old images: $0.0010$;
     - New images: $0.0009$.
 
-    *(the error is computed considering together all the corners for each image, e.g. $8 \times 11 \times 81 = 7128$ corners for the old images and $10 \times 17 \times 30 = 5100$ for the new ones.)*
+    *(The error is computed by collectively considering all corners across the images, e.g. $8 \times 11 \times 81 = 7128$ corners for the old images and $10 \times 17 \times 30 = 5100$ for the new ones.)*
   
     The error is basically the same. Here is an example of the corners projection:
 
@@ -263,7 +261,7 @@ Since the theory and implementation details are described above, here only the r
 
     Since no ground truth is available for our images, this point is not performed.
 
-### Task 7 - Minimize Reprojection Error via MLE
+## Task 7 - Minimize Reprojection Error via MLE
 
 In this exercise we are asked to refine our estimations by minimising the reprojection error using the Maximum Likelihood Estimation. In fact, by following the approach described by Zhang, we are no longer simply minimising the algebraic error used in the closed-form calibration method, but we are instead minimising the sum of squared reprojection errors, which is equivalent to maximising the likelihood of the observed data.  
 It is important to note that the reprojection error measures the difference between the observed image points, which are extracted from the checkerboard images, and the projected image points obtained by projecting the known 3D checkerboard corners onto the image plane using the estimated camera parameters (and therefore the estimated projection matrix).
@@ -290,7 +288,7 @@ After convergence, the reprojection error was evaluated, as usual, on the image 
 Comparing these results with the ones obtained in the Exercise 3, we can see a clear improvement: we reduced the total error from 41.28 to 26.31 and the mean error per corner from 0.41 to 0.30. We can therefore conclude that this process worked well, and it refined all the parameters of the camera, both the extrinsic and the intrinsic ones.
 ??(DA AGGIUNGERE L'IMMAGINE? NON MI SEMBRA MOLTO SIGNIFICATIVA, non credo si vedrebbero molte differenze) -> @@(Sono d'accordo che non sia significativa, penso che gli errori bastino)
 
-### Task 8 - Radial Distortion Compensation
+## Task 8 - Radial Distortion Compensation
 
 In this task, we had to take into consideration the radial distortion, which is the phenomenon where straight lines appear curved in an image (especially at the periphery of the image), caused by light bending more at the lens edges than the center, making pixels shift radially inward or outward. By explicitly modeling radial lens distortion, we can compensate for it, thus making the model more accurate.
 
@@ -315,7 +313,7 @@ It is important to note that in this case the intrinsic parameter $\gamma$ was s
 
 ??(AGGIUNGERE RISULTATI? QUALI? semplicemente un print dei parametri refined?) -> @@(Secondo me i print risulterebbero un po' 'buttati li'. Siccome la descirzione che fai è prettamente teorica, se ci sono delle parti di codice degne di nota potresti inserirle. In generale concluderei dicendo "lasciamo l'analisi dei risultati ottenuti all'esercizio positivo")
 
-### Task 9 - Total Reprojection Error w/ & w/o Radial Distortion Compensation
+## Task 9 - Total Reprojection Error w/ & w/o Radial Distortion Compensation
 
 The purpose of the last exercise is to quantitavely evaluate the impact of radial distortion compensation. To do so, we compared the total and mean reprojection errors of the standard pinhole camera model, with no distortion, and of the radial distortion-aware model.  
 The first model was obviously based on the parameters estimated using Zhang's method, where radial distortion was not considered, whereas the second model was based on the parameters obtained and refined in Exercise 8.
