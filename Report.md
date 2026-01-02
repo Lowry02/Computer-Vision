@@ -7,16 +7,16 @@
 ### Introduction
 
 The **camera calibration problem** consists in estimating the intrinsic and extrinsic parameters of a camera through several measurements.  
-The outcome of these calculations is the **Perspective Projection Matrix** \( $P$ \), which can be written as:
+The outcome of these calculations is the **Perspective Projection Matrix** $P$, which can be written as:
 
 $$P = K [ R | t ]$$
 
 Here:
 
-- **\( $K$ \)** is the intrinsic matrix, containing the internal parameters of the camera (specific to the camera itself)
-- **\( $R$ \)** and **\( $t$ \)** are respectively the rotation matrix and the translation vector, describing the camera pose
+- $K$ is the intrinsic matrix, containing the internal parameters of the camera (specific to the camera itself)
+- $R$ and $t$ are respectively the rotation matrix and the translation vector, describing the camera pose
 
-??(SERVE SPECIFICARE? mi sembra molto una frase da GPT)Once that these parameters are found, many computer vision tasks can be performed, such as **Triangulation**, **Structure from motion**, **Camera pose**, **Stereoscopy** and many other.
+??(SERVE SPECIFICARE? mi sembra molto una frase da GPT) -> @@(Nella consegna vien)Once that these parameters are found, many computer vision tasks can be performed, such as **Triangulation**, **Structure from motion**, **Camera pose**, **Stereoscopy** and many other.
 
 ### Task 1 - Zhang's Calibration Method
 
