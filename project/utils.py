@@ -334,6 +334,8 @@ def superimpose_cylinder(
     
     # projection of 3D Points onto the Image Plane
     img = cv2.imread(img_path)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    
     if img is None:
         raise FileExistsError(f"Cannot find the image file at {img_path}.")
 
@@ -352,8 +354,10 @@ def superimpose_cylinder(
     top_points_proj = projected_points[base_start_idx + num_sides : ]
     cv2.polylines(img, [top_points_proj], isClosed=True, color=(0, 255, 0), thickness=line_thinkness)
     
+    # base center
     center_projection = project(np.array([center_x, center_y, 0, 1]), P)[0]
     cv2.circle(img, (int(center_projection[0].round()), int(center_projection[1].round())), radius=round(2.5*line_thinkness), color=(255, 0, 0), thickness=-1)
+    
     # vertical sides
     side_idxs = np.linspace(0, num_sides - 1, num_sides, dtype=int)
     for side in side_idxs:
@@ -361,6 +365,7 @@ def superimpose_cylinder(
         pt_top = top_points_proj[side]
         cv2.line(img, tuple(pt_base), tuple(pt_top), color=(255, 0, 0), thickness=line_thinkness-1)
         
+    
     return img
 
 def get_rot_axis_from_R(R: np.ndarray) -> tuple[np.ndarray, float]:
