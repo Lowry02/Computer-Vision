@@ -25,8 +25,37 @@ where:
 
 It is required to calibrate the camera (thus finding the unique K and the pair $[R | t]$ for each image) by using the Zhang's procedure, which is based on a key principle: instead of using a single image of many non-coplanar points ??(NON CAPISCO SIGNIFICATO FRASE) -> @@(as is necessary for basic Direct Linear Transform, or DLT, method), Zhang's approach requires multiple images (at least three) of a simple planar calibration pattern.
 
+??(Cercherei di essere meno specifico riguardo al codice e spiegherei più ad alto livello l'algoritmo. Ad esempio, invece di specificare che librerie abbiamo importato e il nome delle funzioni, mi concentrerei di più sui passaggi fatti. Penso che renda più semplice la comprensione del report. Provo a scrivere un esempio della parte qui sotto).
+
+
+
+@@(
+In our case we are provided with 81 images of a checkerboard, our calibration pattern, where each image is taken from a different point in the World reference frame. The checkerboard is composed by a grid of $(8,11)$ reference corners whose coordinates will be used to estimate the parameters.
+
+The foundation of Zhang's method relies on establishing a mathematical relationship, known as a homography (a matrix $H$), between the known 3D plane in the scene (the checkerboard) and its 2D perspective projection onto the image plane. The corners previously mentioned are usefull in this sense, in fact their world and image coordinates are sufficient to estimate $H$. The first ones are easily derived by fixing the world reference orgin into a point in the checkerboard, in our case the bottom-left corner, and knowing the length of the squares' side; the latter ones, instead, are simply their location in pixels, which can be easily computed using the `findChessboardCorners` OpenCV function (we also used `cornerSubPix` to improve the accuracy of the location). After collecting these data, a system of equation is defined as follows:
+
+$$
+A_ih = 0
+$$
+
+where:
+- $A_i$ are the coefficients of the equations derived by the corner $i$ of the image and whose entries are:
+  $$
+  \begin{bmatrix}
+  x & y & 1 & 0 & 0 & 0 & -ux & -uy & -u \\
+  0 & 0 & 0 & x & y & 1 & -vx & -vy & -v
+  \end{bmatrix}
+  $$
+  with $(x,y,z)$ as world coordinates and $(u,v)$ as image coordinates;
+- $h$ is a vector of size 9 that contains the entries of the matrix $H$.
+
+All the $A_i$ are stacked together and the overdetermined system solution is solved by means of Singular Value Decomposition (practically, the solution is the last column of the obtained matrix V). 
+
+After the estimation of the homography for each image, to estimate the camera parameters another system of equation must be solved. 
+$$[\dots]$$
+)
 In our case we are provided with 81 images of a checkerboard, where each image is taken from a different point in the World reference frame. 
-The foundation of Zhang's method relies on establishing a mathematical relationship, known as a **homography** ($H$), between the known 3D plane in the scene and its 2D perspective projection onto the image plane.  
+The foundation of Zhang's method relies on establishing a mathematical relationship, known as a **homography** ($H$), between the known 3D plane in the scene and its 2D perspective projection onto the image plane.
 First of all, we needed to import `numpy` and `OpenCV` libraries to our code. Then we followed the **LabLecture_1** steps to find the keypoints between the given images. We defined a function `get_corners` in which we utilized the function `findChessboardCorners` from the OpenCV library, in order to get the corresponcences we needed to estimate the **homography**.
 
 The function `get_corners` is then called inside another function: `get_homography`. This function is used to compute the homography matrix $H$ that allows us to map 3D points on a calibration pattern (the checkerboard) to 2D pixel coordinates in an image. It implements the Direct Linear Transform (DLT) algorithm, which is the first fundamental step in Zhang’s calibration procedure:
