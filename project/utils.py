@@ -2,6 +2,24 @@ import numpy as np
 import cv2
 
 def get_corners(img_path:str, grid_size:tuple) -> np.ndarray:
+    """
+    Detects and refines the corners of a chessboard pattern in an image.
+    Args:
+        img_path (str): The file path to the input image containing the chessboard pattern.
+        grid_size (tuple): The number of inner corners per chessboard row and column 
+                            (e.g., (rows, columns)).
+    Returns:
+        np.ndarray: A NumPy array of shape (grid_size[0] * grid_size[1], 2) containing 
+                    the refined (x, y) coordinates of the detected corners.
+    Raises:
+        Exception: If the chessboard corners cannot be found in the provided image.
+    Notes:
+        - The function uses OpenCV's `cv2.findChessboardCorners` to detect the corners 
+            and `cv2.cornerSubPix` to refine their positions.
+        - The termination criteria for the corner refinement process is set to a maximum 
+            of 100 iterations or an epsilon of 0.001.
+    """
+    
     img = cv2.imread(img_path)
     return_value, corners = cv2.findChessboardCorners(img, patternSize=grid_size)
     corners = corners.reshape((grid_size[0] * grid_size[1],2))
@@ -77,13 +95,22 @@ def get_homography(img_path:str, grid_size:tuple, square_size:int) -> np.ndarray
 
 def get_v_vector(H:np.ndarray, i:int, j:int) -> np.ndarray:
     """
+    Computes the v_ij vector from the homography matrix H.
+    This function calculates a 6-dimensional vector based on the elements of 
+    the homography matrix H and the indices i and j. The indices i and j are 
+    expected to be either 1 or 2 (1-based indexing), and the function will 
+    internally adjust them to 0-based indexing.
     Args:
-        H (np.ndarray): Homography matrix
-        i (int): can be 1 or 2
-        j (int): can be 1 or 2
-
+        H (np.ndarray): A 3x3 homography matrix.
+        i (int): The first index (1-based) for the computation. Must be 1 or 2.
+        j (int): The second index (1-based) for the computation. Must be 1 or 2.
     Returns:
-        np.array: returns the vector v transposed (dimension = (6,))
+        np.ndarray: A 6-dimensional vector computed from the elements of H.
+    Raises:
+        AssertionError: If H is not a numpy array.
+        AssertionError: If H does not have the shape (3, 3).
+        AssertionError: If i or j are not integers.
+        AssertionError: If i or j are not in the range [1, 2].
     """
     
     assert isinstance(H, np.ndarray), f"H is not a numpy array: type {type(H)}."
@@ -123,10 +150,7 @@ def get_intrinsic(V:np.ndarray) -> np.ndarray:
         np.ndarray: The intrinsic camera matrix K, a 3x3 upper triangular matrix.
     Notes:
         - The normalization step ensures that the intrinsic matrix K is scaled
-            appropriately. The necessity of this step may depend on the specific
-            application.
-        - The input matrix V is expected to be structured such that the smallest
-            singular vector corresponds to the desired solution.
+            appropriately.
     """
     
     assert isinstance(V, np.ndarray), f"V is not a numpy array: type {type(V)}."
@@ -153,7 +177,7 @@ def get_extrinsic(K:np.ndarray, H:np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """
     Computes the extrinsic parameters (rotation matrix R and translation vector t) 
     from the intrinsic matrix K and homography matrix H.
-    Parameters:
+    Args:
     -----------
     K : np.ndarray
         The intrinsic camera matrix of shape (3, 3).
@@ -217,6 +241,23 @@ def get_projection_matrix(K: np.ndarray, R: np.ndarray, t: np.ndarray) -> np.nda
     return  K @ G
 
 def project(points:np.ndarray, P:np.ndarray) -> np.ndarray:
+    """
+    Projects 3D points onto a 2D plane using a given projection matrix.
+    Args:
+        points (np.ndarray): A numpy array of shape (N, 3) or (3,) representing 
+            the 3D points to be projected. If a single point is provided, it will 
+            be reshaped to (1, 3).
+        P (np.ndarray): A numpy array of shape (3, 4) representing the projection 
+            matrix.
+    Returns:
+        np.ndarray: A numpy array of shape (N, 2) containing the 2D projected 
+        points in the form of (u, v) coordinates.
+    Notes:
+        - The function assumes that the input points are in homogeneous coordinates.
+        - The projection is performed by dividing the first two rows of the 
+            projection matrix by the third row to normalize the coordinates.
+    """
+    
     if len(points.shape) == 1:
         points = np.expand_dims(points, axis=0)
     
@@ -227,6 +268,24 @@ def project(points:np.ndarray, P:np.ndarray) -> np.ndarray:
     return np.stack([np.array([u, v]) for u, v in zip(projected_u, projected_v)])
 
 def compute_reprojection_error(all_observed_corners, all_projected_corners):
+    """
+    Computes the reprojection error between observed and projected corner points.
+    The reprojection error is calculated as the Euclidean distance between each 
+    observed corner point and its corresponding projected corner point. The function 
+    returns both the total error and the average error per point.
+    Args:
+        all_observed_corners (list of list of tuples): A list where each element is a 
+            list of (u_obs, v_obs) tuples representing the observed corner points 
+            for a specific image or calibration pattern.
+        all_projected_corners (list of list of tuples): A list where each element is a 
+            list of (u_proj, v_proj) tuples representing the projected corner points 
+            for the corresponding image or calibration pattern.
+    Returns:
+        tuple: A tuple containing:
+            - total_error (float): The sum of all reprojection errors.
+            - average_error (float): The average reprojection error per point.
+    """
+    
     total_error = 0
     total_points = 0
 
@@ -241,6 +300,23 @@ def compute_reprojection_error(all_observed_corners, all_projected_corners):
     return total_error, total_error / total_points
 
 def compute_normalized_reprojection_error(all_observed_corners, all_projected_corners, width, height):
+    """
+    Computes the normalized reprojection error between observed and projected corner points.
+    The reprojection error is normalized by the width and height of the image to ensure
+    scale invariance. The function calculates the total error and the average error per point.
+    Args:
+        all_observed_corners (list of list of tuples): A list where each element is a list of 
+            (u_obs, v_obs) tuples representing the observed corner points for a specific image.
+        all_projected_corners (list of list of tuples): A list where each element is a list of 
+            (u_proj, v_proj) tuples representing the projected corner points for a specific image.
+        width (float): The width of the image, used for normalizing the horizontal error.
+        height (float): The height of the image, used for normalizing the vertical error.
+    Returns:
+        tuple: A tuple containing:
+            - total_error (float): The sum of all normalized reprojection errors.
+            - average_error (float): The mean normalized reprojection error per point.
+    """
+    
     total_error = 0
     total_points = 0
 
@@ -266,10 +342,9 @@ def superimpose_cylinder(
     line_thinkness: int = 2,
 ) -> np.ndarray:
     """
-    Generate the 3D points of a cylinder, calculate the projection matrix and 
-    overlay the object onto the 2D image.
+    Superimposes a cylinder over a checkerboard present in an image.
 
-    Parameters:
+    Args:
     -----------
     img_path : str
         The path to the image file.
@@ -402,7 +477,7 @@ def get_R_from_axis(r: np.ndarray) -> np.ndarray:
     This function takes a 3D vector `r` representing the axis of rotation 
     scaled by the rotation angle (in radians) and computes the corresponding 
     3x3 rotation matrix using the Rodrigues' rotation formula.
-    Parameters:
+    Args:
     -----------
     r : np.ndarray
         A 3-element numpy array representing the axis of rotation scaled 
@@ -478,7 +553,27 @@ def compute_residuals(params: np.ndarray, checkerboard_world_corners: np.ndarray
     residuals = projected_points - checkerboard_image_corners
     return residuals.ravel()
 
-def get_radial_distorsion(images_path, grid_size, square_size, K, all_P):
+def get_radial_distorsion(
+    images_path:list, 
+    grid_size:tuple[int, int], 
+    square_size:int, 
+    K:np.ndarray, 
+    all_P:list
+) -> tuple[float, float]:
+    """
+    Computes the radial distortion coefficients (k1, k2) for a camera 
+    using a set of images, their corresponding calibration grid, and 
+    the camera's intrinsic and extrinsic parameters.
+    Args:
+        images_path (list): A list of file paths to the calibration images.
+        grid_size (tuple[int, int]): The number of inner corners per a chessboard row and column (rows, cols).
+        square_size (int): The size of a square in the calibration grid (in millimeters).
+        K (np.ndarray): The camera intrinsic matrix (3x3).
+        all_P (list): A list of projection matrices (one for each image).
+    Returns:
+        tuple[float, float]: The radial distortion coefficients k1 and k2.
+    """
+    
     alpha_u = K[0,0]
     alpha_v = K[1,1]
     u_0 = K[0, 2]
@@ -517,7 +612,27 @@ def get_radial_distorsion(images_path, grid_size, square_size, K, all_P):
     k1, k2 = k
     return k1, k2
 
-def project_with_distortion(world_corners, K, rvec, tvec, k1, k2):
+def project_with_distortion(
+    world_corners:np.ndarray,
+    K:np.ndarray,
+    rvec:np.ndarray,
+    tvec:np.ndarray,
+    k1:float,
+    k2:float
+) -> np.ndarray:
+    """
+    Projects 3D world points onto a 2D image plane, applying radial distortion.
+    Args:
+        world_corners (np.ndarray): A (N, 3) array of 3D points in the world coordinate system.
+        K (np.ndarray): The camera intrinsic matrix of shape (3, 3).
+        rvec (np.ndarray): A (3,) array representing the rotation vector (axis-angle representation).
+        tvec (np.ndarray): A (3,) array representing the translation vector.
+        k1 (float): The first radial distortion coefficient.
+        k2 (float): The second radial distortion coefficient.
+    Returns:
+        np.ndarray: A (N, 2) array of 2D points on the image plane, with distortion applied.
+    """
+    
     R = get_R_from_axis(rvec)
     Xc = (R @ world_corners.T).T + tvec
     x = Xc[:, 0] / Xc[:, 2]
@@ -537,7 +652,27 @@ def project_with_distortion(world_corners, K, rvec, tvec, k1, k2):
     v_dist = y_hat*alpha_v + v0
     return np.column_stack([u_dist, v_dist])
 
-def pack_params(K, k1, k2, rvecs, tvecs):
+def pack_params(K:np.ndarray, k1:float, k2:float, rvecs:list, tvecs:list) -> np.ndarray:
+    """
+    Packs intrinsic camera parameters, distortion coefficients, and extrinsic parameters 
+    (rotation and translation vectors) into a single 1D numpy array.
+    Args:
+        K (np.ndarray): The 3x3 intrinsic camera matrix, where:
+            - K[0, 0] is the focal length in the x-axis (alpha_u),
+            - K[1, 1] is the focal length in the y-axis (alpha_v),
+            - K[0, 2] is the principal point x-coordinate (u0),
+            - K[1, 2] is the principal point y-coordinate (v0).
+        k1 (float): The first radial distortion coefficient.
+        k2 (float): The second radial distortion coefficient.
+        rvecs (list): A list of rotation vectors (each as a numpy array).
+        tvecs (list): A list of translation vectors (each as a numpy array).
+    Returns:
+        np.ndarray: A 1D numpy array containing the packed parameters in the following order:
+            - Intrinsic parameters: alpha_u, alpha_v, u0, v0.
+            - Distortion coefficients: k1, k2.
+            - Flattened rotation and translation vectors for each view.
+    """
+    
     params = [
         K[0, 0],  # alpha_u
         K[1, 1],  # alpha_v
@@ -553,7 +688,30 @@ def pack_params(K, k1, k2, rvecs, tvecs):
 
     return np.array(params)
 
-def unpack_params(params, n_images):
+def unpack_params(params:list, n_images:int) -> tuple[np.ndarray, float, float, list, list]:
+    """
+    Unpacks camera calibration parameters and extrinsic parameters for multiple images.
+    Args:
+        params (list): A list containing the camera intrinsic parameters, distortion coefficients,
+                        and extrinsic parameters (rotation and translation vectors) for each image.
+                        The list is expected to be structured as follows:
+                        [alpha_u, alpha_v, u0, v0, k1, k2, rvec1, tvec1, rvec2, tvec2, ..., rvecN, tvecN],
+                        where:
+                        - alpha_u, alpha_v: Focal lengths in the u and v directions.
+                        - u0, v0: Principal point coordinates.
+                        - k1, k2: Radial distortion coefficients.
+                        - rvec: Rotation vector for an image.
+                        - tvec: Translation vector for an image.
+        n_images (int): The number of images for which extrinsic parameters are provided.
+    Returns:
+        tuple: A tuple containing:
+            - K (np.ndarray): The 3x3 intrinsic camera matrix.
+            - k1 (float): The first radial distortion coefficient.
+            - k2 (float): The second radial distortion coefficient.
+            - rvecs (list): A list of rotation vectors, one for each image.
+            - tvecs (list): A list of translation vectors, one for each image.
+    """
+    
     alpha_u, alpha_v, u0, v0, k1, k2 = params[:6]
 
     K = np.array([
@@ -575,7 +733,27 @@ def unpack_params(params, n_images):
 
     return K, k1, k2, rvecs, tvecs
 
-def reprojection_residuals(params, all_world_corners, all_observed_corners):
+def reprojection_residuals(params:list, all_world_corners:list, all_observed_corners:list) -> np.ndarray:
+    """
+    Compute the reprojection residuals for a set of images.
+    This function calculates the difference between the observed 2D image points 
+    and the projected 2D points obtained from the 3D world points using the given 
+    camera parameters. The residuals are returned as a concatenated 1D array.
+    Args:
+        params (list): A list containing the camera parameters, including the 
+            intrinsic matrix (K), distortion coefficients (k1, k2), rotation vectors 
+            (rvecs), and translation vectors (tvecs).
+        all_world_corners (list): A list of 3D world points for each image. Each 
+            element in the list corresponds to the 3D points for a single image.
+        all_observed_corners (list): A list of 2D observed image points for each 
+            image. Each element in the list corresponds to the observed 2D points 
+            for a single image.
+    Returns:
+        np.ndarray: A 1D array of concatenated residuals. Each residual is the 
+        difference between the projected 2D points and the observed 2D points, 
+        flattened into a 1D array.
+    """
+    
     n_images = len(all_observed_corners)
     K, k1, k2, rvecs, tvecs = unpack_params(params, n_images)
 
