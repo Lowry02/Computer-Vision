@@ -215,9 +215,7 @@ Since the theory and implementation details are described above, here only the r
     Since $\alpha_u \approx \alpha_v$, the sensor pixel shape can be assumed to be a square. The angle between the axis $u$ and $v$, represented by $s$, is small and can be neglected. The pricipal point $(u_0, v_0)$ is vertically shifted with respect to $(\frac{4080}{2}=2040, \frac{3072}{2} = 1536)$, the expected one in an ideal camera. Even if the presence of misalignment between sensor and lenses may cause it, it is also important to notice that in modern smartphones the image captured by the sensor is not the one shown to the user. In fact, post-processing is generally applied, including also image cropping. This may also explain this notable difference in the vertical coordinate.
 
 2. **Total Reprojection Error**
-
-    # TODO: fix -> not correct approach
-
+   
     The total reprojection error obtained is $1185.65$, with a mean error per corner equal to $6.97$. Even if these values are extremely higher with respect to the one previously obtained in the project (respectively $41.28$ and $0.47$), it is important to notice that the different pixel density present in the two images can influence the perception of the error. In fact, the same pixel error is more evident in the image with lower pixel density.
 
     To perform a fair comparison, the following normalized error is computed:
@@ -263,8 +261,14 @@ Since the theory and implementation details are described above, here only the r
 In this exercise we are asked to refine our estimations by minimising the reprojection error using the Maximum Likelihood Estimation. In fact, by following the approach described by Zhang, we are no longer simply minimising the algebraic error used in the closed-form calibration method, but we are instead minimising the sum of squared reprojection errors, which is equivalent to maximising the likelihood of the observed data.  
 It is important to note that the reprojection error measures the difference between the observed image points, which are extracted from the checkerboard images, and the projected image points obtained by projecting the known 3D checkerboard corners onto the image plane using the estimated camera parameters (and therefore the estimated projection matrix).
 
-By following Zhang procedure, we know that the maximum likelihood estimate can be obtained by minimising the following functional: $$ \sum_{i = 1}^n\sum_{j = 1}^m ||m_{ij} - \hat m(A, R_i, t_i, M_j)||^2, $$ where $\hat m(A, R_i, t_i, M_j)$ is the projection of point $M_j$ in image $i$.  
-Thus, the optimisation minimises the sum of squared errors over all images and points: $\min_\theta \sum_{i, j}||m_{ij} - \hat m(A, R_i, t_i, M_j)||^2$, where $\theta$ is the full parameter vector: $$ \theta = \{\alpha_u, \gamma, u_0, \alpha_v, v_0, r_1, \ldots, r_N, t_1, \ldots, t_N \}, $$ where
+By following Zhang procedure, we know that the maximum likelihood estimate can be obtained by minimising the following functional: 
+
+$$\sum_{i = 1}^n\sum_{j = 1}^m ||m_{ij} - \hat m(A, R_i, t_i, M_j)||^2$$
+
+where $\hat m(A, R_i, t_i, M_j)$ is the projection of point $M_j$ in image $i$.
+Thus, the optimisation minimises the sum of squared errors over all images and points: $\min_\theta \sum_{i, j}||m_{ij} - \hat m(A, R_i, t_i, M_j)||^2$, where $\theta$ is the full parameter vector: 
+$$\theta = \{\alpha_u, \gamma, u_0, \alpha_v, v_0, r_1, \ldots, r_N, t_1, \ldots, t_N \}$$
+where:
 - $K = \begin{bmatrix} \alpha_u & \gamma & u_0 \\ 0 & \alpha_v & v_0 \\ 0 & 0 & 1 \end{bmatrix}$ 
 - $\bold{r}$ is the rotation vector in axis-angle (Rodrigues) form
 - $\bold{t}$ is the translation vector
@@ -282,12 +286,22 @@ Comparing these results with the ones obtained in the Exercise 3, we can see a c
 
 In this task, we had to take into consideration the radial distortion, which is the phenomenon where straight lines appear curved in an image (especially at the periphery of the image), caused by light bending more at the lens edges than the center, making pixels shift radially inward or outward. By explicitly modeling radial lens distortion, we can compensate for it, thus making the model more accurate.
 
-As seen in the Professor's notes, we based our procedure on the two parameter, $k_1$ and $k_2$, radial distortion model: $$ \begin{cases} \hat{u} = (u - u_0)(1 + k_1r_d^2 + k_2r_d^4) + u_0 \\ \hat{v} = (v - v_0)(1 + k_1r_d^2 + k_2r_d^4) + v_0 \end{cases} $$ where $u, v$ are the ideal projections (in absence of radial distortion), $\hat u, \hat v$ are the actual projections and $$r_d^2 = \left(\frac{u - u_0}{\alpha_u}\right)^2 + \left(\frac{v - v_0}{\alpha_v}\right)^2$$
+As seen in the Professor's notes, we based our procedure on the two parameter, $k_1$ and $k_2$, radial distortion model: 
+
+$$\begin{cases} \hat{u} = (u - u_0)(1 + k_1r_d^2 + k_2r_d^4) + u_0 \\ \hat{v} = (v - v_0)(1 + k_1r_d^2 + k_2r_d^4) + v_0 \end{cases}$$
+
+where $u, v$ are the ideal projections (in absence of radial distortion), $\hat u, \hat v$ are the actual projections and 
+
+$$r_d^2 = \left(\frac{u - u_0}{\alpha_u}\right)^2 + \left(\frac{v - v_0}{\alpha_v}\right)^2$$
 
 The procedure starts by basically following the initial one: we do not consider distortion and so we estimate our parameters via homographies. This provides an initial estimate of the camera parameters under the ideal pinhole assumption.  
-Given the estimated intrinsic matrix $K$ and projection matrices $P_i$, the distortion coefficients $k_1$ and $k_2$ are estimated by solving a linear least-squares problem: for each image, we append the equation system, thus obtaining an overdetermined system: $$ A \begin{bmatrix} k_1 \\ k_2 \end{bmatrix} = b $$
+Given the estimated intrinsic matrix $K$ and projection matrices $P_i$, the distortion coefficients $k_1$ and $k_2$ are estimated by solving a linear least-squares problem: for each image, we append the equation system, thus obtaining an overdetermined system: 
 
-After estimating all the initial parameters, $K^0, R_i^0, t_i^0, P_i^0 \text{ and } k_1^0, k_2^0$, we had to refine them. To do so, we again applied the Levenberg-Marquardt algorithm to perform a nonlinear reprojection error minimisation. The optimised parameter vector included the intrinsic parameters ($\alpha_u, \alpha_v, u_0, v_0$), the radial distortion coefficients ($k_1, k_2$), the rotation and the translation vectors for each image. Again, minimising the sum of squared residuals corresponds to a Maximum Likelihood Estimation of all camera parameters, which, if we re-used Zhang's notation, would be $$ \sum_{i = 1}^n \sum_{j = 1}^m ||m_{ij} - \hat m(A, k_1, k_2, R_i, t_i, M_j)||^2 $$
+$$A \begin{bmatrix} k_1 \\ k_2 \end{bmatrix} = b$$
+
+After estimating all the initial parameters, $K^0, R_i^0, t_i^0, P_i^0 \text{ and } k_1^0, k_2^0$, we had to refine them. To do so, we again applied the Levenberg-Marquardt algorithm to perform a nonlinear reprojection error minimisation. The optimised parameter vector included the intrinsic parameters ($\alpha_u, \alpha_v, u_0, v_0$), the radial distortion coefficients ($k_1, k_2$), the rotation and the translation vectors for each image. Again, minimising the sum of squared residuals corresponds to a Maximum Likelihood Estimation of all camera parameters, which, if we re-used Zhang's notation, would be:
+
+$$\sum_{i = 1}^n \sum_{j = 1}^m ||m_{ij} - \hat m(A, k_1, k_2, R_i, t_i, M_j)||^2$$
 
 It is important to note that in this case the intrinsic parameter $\gamma$ was set to 0, so it was not optimised during the procedure.
 
@@ -298,7 +312,9 @@ It is important to note that in this case the intrinsic parameter $\gamma$ was s
 The purpose of the last exercise is to quantitavely evaluate the impact of radial distortion compensation. To do so, we compared the total and mean reprojection errors of the standard pinhole camera model, with no distortion, and of the radial distortion-aware model.  
 The first model was obviously based on the parameters estimated using Zhang's method, where radial distortion was not considered, whereas the second model was based on the parameters obtained and refined in Exercise 8.
 
-For each observed corner $(u_{obs}, v_{obs})$ and corresponding projected point $(u_{proj}, v_{proj})$, the reprojection error is computed as the Euclidean distance in pixel space: $$ err = \sqrt{(u_{obs} - u_{proj})^2 + (v_{obs} - v_{proj})^2} $$
+For each observed corner $(u_{obs}, v_{obs})$ and corresponding projected point $(u_{proj}, v_{proj})$, the reprojection error is computed as the Euclidean distance in pixel space: 
+
+$$err = \sqrt{(u_{obs} - u_{proj})^2 + (v_{obs} - v_{proj})^2}$$
 
 The total reprojection error is obtained by summing the error over all points and images, while the mean reprohection error is normalised by the total number of corners.
 
