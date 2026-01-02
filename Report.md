@@ -205,6 +205,7 @@ Since the theory and implementation details are described above, here only the r
 1. **Zhang's Calibration method**
 
     The obtained matrix $K$ is:
+    
     $$
         K = \begin{bmatrix} 
         \alpha_u = 3258.001 & s = 7.425 & u_0=2039.796 \\ 
@@ -212,6 +213,7 @@ Since the theory and implementation details are described above, here only the r
         0 & 0 & 1 
         \end{bmatrix}
     $$
+
     Since $\alpha_u \approx \alpha_v$, the sensor pixel shape can be assumed to be a square. The angle between the axis $u$ and $v$, represented by $s$, is small and can be neglected. The pricipal point $(u_0, v_0)$ is vertically shifted with respect to $(\frac{4080}{2}=2040, \frac{3072}{2} = 1536)$, the expected one in an ideal camera. Even if the presence of misalignment between sensor and lenses may cause it, it is also important to notice that in modern smartphones the image captured by the sensor is not the one shown to the user. In fact, post-processing is generally applied, including also image cropping. This may also explain this notable difference in the vertical coordinate.
 
 2. **Total Reprojection Error**
@@ -231,12 +233,12 @@ Since the theory and implementation details are described above, here only the r
     - $n\_corners$ is the number of projected corners.
 
     In this way, each error is weighted with the respective dimension of the image, obtaining an adimensional value:
-    - Old images: $0.0005$;
-    - New images: $0.0022$.
-  
-    The error is increased of a factor of $\frac{0.0005}{0.0022} = 4.4$.
+    - Old images: $0.0010$;
+    - New images: $0.0009$.
 
-    Here is an example of the corners projection:
+    *(the error is computed considering together all the corners for each image, e.g. $8 \times 11 \times 81 = 7128$ corners for the old images and $10 \times 17 \times 30 = 5100$ for the new ones.)*
+  
+    The error is basically the same. Here is an example of the corners projection:
 
     ![Corners Projection - Phone image](./imgs_for_CV_project/phone_image_corners_projection.png)
 
@@ -250,7 +252,7 @@ Since the theory and implementation details are described above, here only the r
 
     ![Principal Point Standard Deviation - ](./imgs_for_CV_project/phone_image_principal_point.png)
 
-    As the number of images increases, the error decreases and reaches a plateu. The magnitude is significantly higher than the one previosuly observed in the project. In this sense, the analysis proposed in point 2 is considered valid also in this case.
+    As the number of images increases, the error decreases and reaches a plateu. The magnitude is significantly higher than the one previosuly observed in the project. In this sense, the analysis proposed in point 2 is still considered valid.
 
 5. **Comparing the estimated $R,t$ pairs**
 
