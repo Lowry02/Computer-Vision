@@ -2,6 +2,11 @@
 
 ## Lorenzo Cusin – Giacomo Serafini – Pietro Terribile
 
+**AI use**
+In this project we used AI tools to:
+- write the documentation of the functions in the code;
+- ??(altro?)
+
 ## Project 1 — Camera Calibration
 
 ### Introduction
