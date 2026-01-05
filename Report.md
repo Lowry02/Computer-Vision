@@ -23,16 +23,11 @@ where:
 
 ## Task 1 - Zhang's Calibration Method
 
-It is required to calibrate the camera (thus finding the unique K and the pair $[R | t]$ for each image) by using the Zhang's procedure, which is based on a key principle: instead of using a single image of many non-coplanar points ??(NON CAPISCO SIGNIFICATO FRASE) -> @@(as is necessary for basic Direct Linear Transform, or DLT, method), Zhang's approach requires multiple images (at least three) of a simple planar calibration pattern.
+It is required to calibrate the camera (thus finding the unique K and the pair $[R | t]$ for each image) by using the Zhang's procedure, which is based on a key principle: instead of starting from a single image and collecting from that $n$ non co-planar points to get the correspondences as required by DLT, start from taking at least three pictures of a plane from different position in the space, such that it is possible to establishing a mathematical relationship, known as a homography (a matrix $H$), between the known 3D plane in the scene (the checkerboard) and its 2D perspective projection onto the image plane.
 
-??(Cercherei di essere meno specifico riguardo al codice e spiegherei più ad alto livello l'algoritmo. Ad esempio, invece di specificare che librerie abbiamo importato e il nome delle funzioni, mi concentrerei di più sui passaggi fatti. Penso che renda più semplice la comprensione del report. Provo a scrivere un esempio della parte qui sotto).
-
-
-
-@@(
 In our case we are provided with 81 images of a checkerboard, our calibration pattern, where each image is taken from a different point in the World reference frame. The checkerboard is composed by a grid of $(8,11)$ reference corners whose coordinates will be used to estimate the parameters.
 
-The foundation of Zhang's method relies on establishing a mathematical relationship, known as a homography (a matrix $H$), between the known 3D plane in the scene (the checkerboard) and its 2D perspective projection onto the image plane. The corners previously mentioned are usefull in this sense, in fact their world and image coordinates are sufficient to estimate $H$. The first ones are easily derived by fixing the world reference orgin into a point in the checkerboard, in our case the bottom-left corner, and knowing the length of the squares' side; the latter ones, instead, are simply their location in pixels, which can be easily computed using the `findChessboardCorners` OpenCV function (we also used `cornerSubPix` to improve the accuracy of the location). After collecting these data, a system of equation is defined as follows:
+In fact their World and image coordinates are sufficient to estimate $H$. The first ones are easily derived by fixing the World reference orgin into a point in the checkerboard, in our case the bottom-left corner, and knowing the length of the squares' side; the latter ones, instead, are simply their location in pixels, which can be easily computed using the `findChessboardCorners` OpenCV function (we also used `cornerSubPix` to improve the accuracy of the location). After collecting these data, a system of equation is built following the DLT method and considering the 3D plane to have equation $Z=0$:
 
 $$
 A_ih = 0
@@ -46,63 +41,74 @@ where:
   0 & 0 & 0 & x & y & 1 & -vx & -vy & -v
   \end{bmatrix}
   $$
-  with $(x,y,z)$ as world coordinates and $(u,v)$ as image coordinates;
+  with $(x,y,1)$ as world homogeneous coordinates and $(u,v,1)$ as image homogeneous coordinates;
 - $h$ is a vector of size 9 that contains the entries of the matrix $H$.
 
-All the $A_i$ are stacked together and the overdetermined system solution is solved by means of Singular Value Decomposition (practically, the solution is the last column of the obtained matrix V). 
+All the $A_i$  are stacked together and the overdetermined system solution is solved by means of Singular Value Decomposition (practically, the solution is the last column of the obtained matrix V). The resulting matrix $H$ is a 3x3 matrix (since the plane has equation $Z=0$, the third component is cut off and basically $H$ 's entries are the first, second and fourth columns of $P$).
 
-After the estimation of the homography for each image, to estimate the camera parameters another system of equation must be solved. 
-$$[\dots]$$
-)
-In our case we are provided with 81 images of a checkerboard, where each image is taken from a different point in the World reference frame. 
-The foundation of Zhang's method relies on establishing a mathematical relationship, known as a **homography** ($H$), between the known 3D plane in the scene and its 2D perspective projection onto the image plane.
-First of all, we needed to import `numpy` and `OpenCV` libraries to our code. Then we followed the **LabLecture_1** steps to find the keypoints between the given images. We defined a function `get_corners` in which we utilized the function `findChessboardCorners` from the OpenCV library, in order to get the corresponcences we needed to estimate the **homography**.
-
-The function `get_corners` is then called inside another function: `get_homography`. This function is used to compute the homography matrix $H$ that allows us to map 3D points on a calibration pattern (the checkerboard) to 2D pixel coordinates in an image. It implements the Direct Linear Transform (DLT) algorithm, which is the first fundamental step in Zhang’s calibration procedure:
-
-- It first calls `get_corners` to detect the $(u, v)$ pixel coordinates of the checkerboard corners in the provided image
-- It generates the corresponding world coordinates $(x, y)$ in millimeters by multiplying the grid indices by the `square_size` (11mm in our case). It assumes the board lies on the $Z=0$ plane
-- It builds a system of linear equations: $Ah = 0$. Each detected corner contributes two rows to the matrix $A$, ??(NON CAPISCO SIGNIFICATO FRASE)representing the relationship:
+After the estimation of the homography for each image, to estimate the camera parameters another system of equation must be solved. Due to the strict relation between homography and perspective projection, Zhang proceeded to relate the homography with the rigid matrix that is part of $P$. Observing that:
 
 $$
-\begin{bmatrix}
-x & y & 1 & 0 & 0 & 0 & -ux & -uy & -u \\
-0 & 0 & 0 & x & y & 1 & -vx & -vy & -v
-\end{bmatrix}
+H = \lambda [p_1 \ p_2 \ p_4]
 $$
 
-- SVD Solver: It uses Singular Value Decomposition to solve the system. The homography parameters are found in the last row of the $V$ matrix (the right-singular vector associated with the smallest singular value)
-- Output: The resulting 9-element vector is reshaped into the final 3x3 Homography matrix
-
-Another function, called `get_v_vector`, is used to linearize the constraints that the homography $H$ imposes, ??(NON CAPISCO SOGGETTO)represented by the symmetric matrix $B = K^{-T}K^{-1}$. Since $B$ is symmetric, ??(E' UNA CONSEGUENZA?)it is defined by 6 elements collected in a vector $b$. The function extracts specific products from two columns of the homography matrix ($h_i$ and $h_j$) so that the constraint $h_i^T B h_j$ can be written as the dot product $v_{ij}^T b$. Each homography provides constraints that are stacked into a system of equations. The vector is defined as:
+And that
 
 $$
-v_{ij} = \begin{bmatrix}
+P = K [R|t]
+$$
+Therefore $H$ is related to $R$, in fact: 
+
+$$
+H = \lambda K [r_1 \ r_2 \ t]
+$$
+
+$$\begin{cases} 
+h_1 = \lambda K r_1 \\ 
+h_2 = \lambda K r_2 
+\end{cases} \implies 
+\begin{cases} 
+r_1 = \frac{1}{\lambda} K^{-1} h_1 \\ 
+r_2 = \frac{1}{\lambda} K^{-1} h_2 
+\end{cases}$$Then, Zhang imposed the rotational constraints to this formulation of $H$. Thus:$$\begin{cases} 
+r_1^\top r_2 = 0 \\ 
+r_1^\top r_1 = r_2^\top r_2 
+\end{cases} \xrightarrow{} 
+\begin{cases} 
+h_1^\top (K K^\top)^{-1} h_2 = 0 \\ 
+h_1^\top (K K^\top)^{-1} h_1 = h_2^\top (K K^\top)^{-1} h_2 
+\end{cases}$$And $B = (K K^\top)^{-1}$ is imposed. Notice that $B$ is symmetric, so it has 6 unknown entries. These are stacked in a vector $b = [B_{11}, B_{12}, B_{22}, B_{13}, B_{23}, B_{33}]^\top$.Now, taking all the 81 planes and the respective homographies, we get 162 constraints on the same $B$. To solve the previous system of equations in $B$ we relied on the support vector $v$, since is easy to check that, for $i,j \in \{1,2}\ $, $h_i^\top B h_j$ can be written as the dot product $v_{ij}^\top b$, where$$v_{ij} = \begin{bmatrix}
 H_{1i}H_{1j} \\
 H_{1i}H_{2j} + H_{2i}H_{1j} \\
 H_{2i}H_{2j} \\
 H_{3i}H_{1j} + H_{1i}H_{3j} \\
 H_{3i}H_{2j} + H_{2i}H_{3j} \\
 H_{3i}H_{3j}
-\end{bmatrix}^T
+\end{bmatrix}$$
+
+In such way the constraints for a single image become: 
+
+$$
+\begin{bmatrix} 
+v_{12}^\top \\ 
+(v_{11} - v_{22})^\top 
+\end{bmatrix} b = 0
 $$
 
-After that, we wrote two other functions, `get_intrinsic` and `get_extrinsic`, which compute respectively the $K$ and the pair $[R | t]$.  
-The first one computes the Singular Value Decomposition (SVD) of the constraints matrix $V$ (in which, given $n$ planes, $2n \times 6$ equations are stacked) and then extracts the smallest singular vector, which is the solution to the problem. After that, it performs the Cholesky decomposition, finding the intrinsic matrix $K$.  
-On the other hand, the second function computes ??(e' giusto dire cosi?)column-wise the rotation matrix $R$ and $t$, starting from the fact that $P = [R | t] = K [r1 \ r2 \ r3 | t]$.
+And stacking these for all the planes, the linear system $Vb$ = 0 is obtained. 
+Theoretically speaking, for $b$ to be unique, $V$ should be rank 5 and the solution to the problem would be the null space of V, but due to measurement noise the actual rank of $V$ is 6. 
+To solve the problem, linear least squares is performed, whose solution is known to be the right singular vector corresponding to the smallest singular value of $V$. 
 
-??(DA SCRIVERE MEGLIO)Later on the realization of the project, we had to add this portion of code to the function 
-```python
-    if t[2] < 0:
-        t = -t
-        lam = -lam
-```
+Once $B$ is uniquely determined, Cholesky factorization is performed on that to compute intrinsics matrix $K$. After that we can reconstruct the extrinsics matrix as well, whose parameters are given by:
 
-This had to be done because there exists two possible solutions to the problem when computing extrinsics, but only one has the right physical meaning: being the checkerboard in front of the camera, we expect the value of $t_z$ to be positive (since we defined the camera reference frame this way, with $Z > 0$), but sometimes this was not true. In the superimposition task, we observed that, for some images, the value was negative and the cylinder was entering the frame rather that getting out. This corresponded to the WRF to be considered behind the camera, which is clearly unfeasable. So, we are able to detect the wrong solution by checking this value and correct it by taking the opposite, which means taking the opposite scale factor $\lambda$.
+$$
+r_1 = \lambda K^{-1}h_1, \quad r_2 = \lambda K^{-1}h_2, \quad t = \lambda K^{-1}h_3, \quad r_3 = r_1 \times r_2
+$$
 
-??(SENSO FRASE)Now that we have everything required the full core pipeline of Zhang’s calibration method, transitioning from raw images to the estimation of camera parameters is performed: first we define the physical properties of the checkerboard (grid dimensions and square size) and load all the available calibration images. Then, for every image we are given, a planar homography $H$ is computed to relate the world coordinates of the board to the image plane with the `get_homography` function. ??(DA RISCRIVERE)From each $H$, the function `get_v_vector` extracts the $v_{ij}$ vectors to enforce the orthogonality and unit scale constraints required to solve for the camera's internal geometry. These vectors are stacked into a global matrix $V$, representing a system of linear equations: $Vb = 0$. The intrinsic matrix $K$ is recovered by solving the linear system, which is performed by the `get_intrinsics` function. In the end, using the finalized $K$ and the homography as inputs of `get_extrinsics`, we find the specific rotation ($R$) and translation ($t$) matrices of the camera relative to the calibration board.
+Where $$\lambda = 1 / \|K^{-1}h_1\| = 1 / \|K^{-1}h_2\|$$ and $\times$ represents the cross product.
+$$[\dots]$$
 
-??(HA SENSO PRINTARE UN OUTPUT DI K, R e t DI ESEMPIO?) -> @@(Nell'esercizio 6.1 ho interpretato i significati dei parametri di $K$, quindi volendo si potrebbe riportare quello. Riguardo $R$ e $t$ secondo me ha meno senso.)
+
 
 ## Task 2 - Total Reprojection Error
 
