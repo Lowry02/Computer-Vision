@@ -23,11 +23,11 @@ where:
 
 ## Task 1 - Zhang's Calibration Method
 
-It is required to calibrate the camera (thus finding the unique K and the pair $[R | t]$ for each image) by using the Zhang's procedure, which is based on a key principle: instead of starting from a single image and collecting from that $n$ non co-planar points to get the correspondences as required by DLT, start from taking at least three pictures of a plane from different position in the space, such that it is possible to establishing a mathematical relationship, known as a homography (a matrix $H$), between the known 3D plane in the scene (the checkerboard) and its 2D perspective projection onto the image plane.
+It is required to calibrate the camera (thus finding the unique K and the pair $[R | t]$ for each image) by using the Zhang's procedure, which is based on a key principle: instead of starting from a single image and collecting from that $n$ non co-planar points to get the correspondences as required by DLT, start from taking at least three pictures of a plane from different positions in the space, such that it is possible to establish a mathematical relationship, known as homography (a matrix $H$), between the known 3D plane in the scene (the checkerboard) and its 2D perspective projection onto the image plane.
 
 In our case we are provided with 81 images of a checkerboard, our calibration pattern, where each image is taken from a different point in the World reference frame. The checkerboard is composed by a grid of $(8,11)$ reference corners whose coordinates will be used to estimate the parameters.
 
-In fact their World and image coordinates are sufficient to estimate $H$. The first ones are easily derived by fixing the World reference orgin into a point in the checkerboard, in our case the bottom-left corner, and knowing the length of the squares' side; the latter ones, instead, are simply their location in pixels, which can be easily computed using the `findChessboardCorners` OpenCV function (we also used `cornerSubPix` to improve the accuracy of the location). After collecting these data, a system of equation is built following the DLT method and considering the 3D plane to have equation $Z=0$:
+In fact their World and Image coordinates are sufficient to estimate $H$. The first ones are easily derived by fixing the World reference orgin into a point in the checkerboard, in our case the bottom-left corner, and knowing the length of the squares' side; the latter ones, instead, are simply their location in pixels, which can be easily computed using the `findChessboardCorners` OpenCV function (we also used `cornerSubPix` to improve the accuracy of the location). After collecting these data, a system of equation is built following the DLT method and considering the 3D plane to have equation $Z=0$:
 
 $$
 A_ih = 0
@@ -77,7 +77,7 @@ r_1^\top r_1 = r_2^\top r_2
 \begin{cases} 
 h_1^\top (K K^\top)^{-1} h_2 = 0 \\ 
 h_1^\top (K K^\top)^{-1} h_1 = h_2^\top (K K^\top)^{-1} h_2 
-\end{cases}$$And $B = (K K^\top)^{-1}$ is imposed. Notice that $B$ is symmetric, so it has 6 unknown entries. These are stacked in a vector $b = [B_{11}, B_{12}, B_{22}, B_{13}, B_{23}, B_{33}]^\top$.Now, taking all the 81 planes and the respective homographies, we get 162 constraints on the same $B$. To solve the previous system of equations in $B$ we relied on the support vector $v$, since is easy to check that, for $i,j \in \{1,2}\ $, $h_i^\top B h_j$ can be written as the dot product $v_{ij}^\top b$, where$$v_{ij} = \begin{bmatrix}
+\end{cases}$$And $B = (K K^\top)^{-1}$ is imposed. Notice that $B$ is symmetric, so it has 6 unknown entries. These are stacked in a vector $b = [B_{11}, B_{12}, B_{22}, B_{13}, B_{23}, B_{33}]^\top$.Now, taking all the 81 planes and the respective homographies, we get 162 constraints on the same $B$. To solve the previous system of equations in $B$ we relied on the support vector $v$, since it is easy to check that, for $i,j \in \{1,2\} $, $h_i^\top B h_j$ can be written as the dot product $v_{ij}^\top b$, where$$v_{ij} = \begin{bmatrix}
 H_{1i}H_{1j} \\
 H_{1i}H_{2j} + H_{2i}H_{1j} \\
 H_{2i}H_{2j} \\
@@ -95,7 +95,7 @@ v_{12}^\top \\
 \end{bmatrix} b = 0
 $$
 
-And stacking these for all the planes, the linear system $Vb$ = 0 is obtained. 
+and stacking these for all the planes, the linear system $Vb$ = 0 is obtained. 
 Theoretically speaking, for $b$ to be unique, $V$ should be rank 5 and the solution to the problem would be the null space of V, but due to measurement noise the actual rank of $V$ is 6. 
 To solve the problem, linear least squares is performed, whose solution is known to be the right singular vector corresponding to the smallest singular value of $V$. 
 
@@ -106,8 +106,6 @@ r_1 = \lambda K^{-1}h_1, \quad r_2 = \lambda K^{-1}h_2, \quad t = \lambda K^{-1}
 $$
 
 Where $$\lambda = 1 / \|K^{-1}h_1\| = 1 / \|K^{-1}h_2\|$$ and $\times$ represents the cross product.
-$$[\dots]$$
-
 
 
 ## Task 2 - Total Reprojection Error
