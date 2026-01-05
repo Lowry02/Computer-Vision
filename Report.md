@@ -35,12 +35,14 @@ $$
 
 where:
 - $A_i$ are the coefficients of the equations derived by the corner $i$ of the image and whose entries are:
-  $$
-  \begin{bmatrix}
-  x & y & 1 & 0 & 0 & 0 & -ux & -uy & -u \\
-  0 & 0 & 0 & x & y & 1 & -vx & -vy & -v
-  \end{bmatrix}
-  $$
+
+$$
+\begin{bmatrix}
+x & y & 1 & 0 & 0 & 0 & -ux & -uy & -u \\
+0 & 0 & 0 & x & y & 1 & -vx & -vy & -v
+\end{bmatrix}
+$$
+
   with $(x,y,1)$ as world homogeneous coordinates and $(u,v,1)$ as image homogeneous coordinates;
 - $h$ is a vector of size 9 that contains the entries of the matrix $H$.
 
@@ -105,19 +107,34 @@ $$
 r_1 = \lambda K^{-1}h_1, \quad r_2 = \lambda K^{-1}h_2, \quad t = \lambda K^{-1}h_3, \quad r_3 = r_1 \times r_2
 $$
 
-Where $$\lambda = 1 / \|K^{-1}h_1\| = 1 / \|K^{-1}h_2\|$$ and $\times$ represents the cross product.
+Where $$\lambda = 1 / \| K^{-1}h_1 \| = 1 / \| K^{-1}h_2 \| $$ and $\times$ represents the cross product.
 
+Because of noise, the recovered matrix $R = [r_1, r_2, r_3]$ may not orthogonal. To find the closest orthogonal matrix $R'$ in the Frobenius norm, Singular Value Decomposition is performed on the estimated $R$: if $R = U \Sigma V^\top$, then the refined rotation matrix would be $R' = UV^\top$.
+
+### Editor's note
+When we faced the third task of the project, we observed that for some immages the cylinder was facing downward instead of upward. Since this happened for a few planes, we tought that this event was happening due to measurement noise when recovering the extrinsic parameters from the images. Therefore we forced the $t$ vector to be positive with this code, before computing the rotation vectors $r_1$, $r_2$ and $r_3$:
+```python
+  if t[2] < 0:
+     t = -t
+     lam = -lam
+```
+After this was implemented, the superimposition worked as expected.
 
 ## Task 2 - Total Reprojection Error
+This code computes the total reprojection error for the grid points in the second calibration image (index 1). It selects the image, retrieves its extrinsic parameters (rotation R and translation t), constructs the projection matrix P, detects the corners, projects the 3D world points of the checkerboard onto the image plane, calculates the squared Euclidean distance between projected and detected corner positions to accumulate the error, prints the total and mean error per corner, loads the image, converts it to RGB, overlays red circles at the projected corner positions, and displays the image using Plotly Express.
+
+
 
 For this task we are required to choose one of the calibration images and compute the total reprojection
 error, i.e. the distance between the projections (coordinates) of the measured image points and the projections estimated by the geometric model of the camera (perspective projection matrix $P$).
 
-First of all, we defined the function `get_projection_matrix` to compute the $P$ matrix for an image given the intrinsics and extrinsics parameters. After that, we had to project 3D points onto a 2D image plane using the provided projection matrix. Thus, we defined the function `project`, which collects the projected pairs ($u,v$):??(MAGARI SPIEGARE UN PO MEGLIO)
+First of all, we selected an image from which retrieve its extrinsics parameters and with that we built matrix $P$. Now with that, we projected the 3D world points of the checkerboard onto the 2D image plane. At this point, we computed the total reprojection error with the ($u,v$) coordinates that  `findChessboardCorners` found previously. The computations performed follow this formula:
 
-At this point, the pipeline calls these functions and the quadratic error is computed. 
+$$
+\epsilon(P) = \sum_{i=1}^{n} \left( \frac{p_1^\top m_{(i)}}{p_3^\top m_{(i)}} - u_{(i)} \right)^2 + \left( \frac{p_2^\top m_{(i)}}{p_3^\top m_{(i)}} - v_{(i)} \right)^2
+$$
 
-The results we got for image 0, shown as an example, were the following: 
+The results we got for image 1, shown as an example, were the following: 
   -  Error: 23.09
   -  Mean error per corner: 0.26 ??(MI VENGONO RISULTATI DIVERSI A ME, poi troppo basso considerato che nel 7 Lore dopo il refinement abbia risultati peggiori)
 
@@ -139,9 +156,10 @@ The second data is the most interesting: a value of ??(DA VEDERE)0.26 means that
 ## Task 3 - Superimposing a Cylinder
 
 The next task requires to superimpose an object, in this case a cylinder, on 25 checkerboards and to visualize the correctness of the previous computations and results. 
-To complete the task, we defined the `superimpose_cylinder` function. This function creates a 3D cylinder and renders it onto a specific image. First, it generates a set of 3D points in homogeneous coordinates based on a provided radius, height, and center position ($x, y$) on the world plane. The cylinder is approximated using a user-defined number of sides and vertical slices. Then, using the camera's projection matrix $P$, these 3D points are mapped onto the 2D image plane. Finally, the function uses OpenCV's `polylines` function to draw the cylinder's structure.
+To complete the task, we defined a function that creates a 3D cylinder and renders it onto a specific image. First, it generates a set of 3D points in homogeneous coordinates based on a provided radius, height, and center position ($x, y$) on the world plane. The cylinder is approximated using a user-defined number of sides and vertical slices. Then, using the camera's projection matrix $P$, these 3D points are mapped onto the 2D image plane. Finally, the function uses OpenCV's `polylines` function to draw the cylinder's structure.
 
-??(COSA INTENDI?)In the execution code of the task we recalled the `get_projection_matrix` for each of the 25 images before superimposing the cylinders. Observing the results, we noticed that when the slope of the plane is evident to the human eye, the cylinder is correctly inclined with the plane. When the surface is slightly sloped, so much so that it is imperceptible to the naked eye, it is not to the model and the cylinder superimposed is yet inclined. Here we report three cases of interest of our observations.
+Observing the results, we noticed that when the slope of the plane is evident to the human eye, the cylinder is correctly inclined with the plane. When the surface is slightly sloped, so much so that it is imperceptible to the naked eye, it is not to the model and the cylinder superimposed is yet inclined. Here we report three cases of interest of our observations.
+
 
 ### MISSING IMAGES
 
