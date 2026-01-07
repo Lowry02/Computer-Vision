@@ -40,10 +40,8 @@ def get_homography(img_path:str, grid_size:tuple, square_size:int) -> np.ndarray
     pixel coordinates in the image.
     Args:
         img_path (str): Path to the image file containing the checkerboard pattern.
-        grid_size (tuple, optional): Dimensions of the checkerboard grid as (columns, rows). 
-            Default is (8, 11).
-        square_size (int, optional): Size of each square in the checkerboard grid, in millimeters. 
-            Default is 11.
+        grid_size (tuple): Dimensions of the checkerboard grid as (columns, rows).
+        square_size (int): Size of each square in the checkerboard grid, in millimeters.
     Returns:
         H (np.ndarray): The computed 3x3 homography matrix.
     Raises:
@@ -148,9 +146,6 @@ def get_intrinsic(V:np.ndarray) -> np.ndarray:
                         on the camera calibration parameters.
     Returns:
         np.ndarray: The intrinsic camera matrix K, a 3x3 upper triangular matrix.
-    Notes:
-        - The normalization step ensures that the intrinsic matrix K is scaled
-            appropriately.
     """
     
     assert isinstance(V, np.ndarray), f"V is not a numpy array: type {type(V)}."
@@ -244,7 +239,7 @@ def project(points:np.ndarray, P:np.ndarray) -> np.ndarray:
     """
     Projects 3D points onto a 2D plane using a given projection matrix.
     Args:
-        points (np.ndarray): A numpy array of shape (N, 3) or (3,) representing 
+        points (np.ndarray): A numpy array of shape (N, 4) or (4,) representing 
             the 3D points to be projected. If a single point is provided, it will 
             be reshaped to (1, 3).
         P (np.ndarray): A numpy array of shape (3, 4) representing the projection 
@@ -293,7 +288,7 @@ def compute_reprojection_error(all_observed_corners, all_projected_corners):
         observed_corners = all_observed_corners[i]
         for j, (u_proj, v_proj) in enumerate(all_projected_corners[i]):
             u_obs, v_obs = observed_corners[j]
-            err = np.sqrt((u_obs - u_proj)**2 + (v_obs - v_proj)**2)
+            err = (u_obs - u_proj)**2 + (v_obs - v_proj)**2
             total_error += err
             total_points += 1
 
@@ -324,9 +319,11 @@ def compute_normalized_reprojection_error(all_observed_corners, all_projected_co
         observed_corners = all_observed_corners[i]
         for j, (u_proj, v_proj) in enumerate(all_projected_corners[i]):
             u_obs, v_obs = observed_corners[j]
-            err = np.sqrt(((u_obs - u_proj)/width)**2 + ((v_obs - v_proj)/height)**2)
+            err = ((u_obs - u_proj)/width)**2 + ((v_obs - v_proj)/height)**2
             total_error += err
             total_points += 1
+
+    total_error = np.sqrt(total_error)
 
     return total_error, total_error / total_points
     
@@ -377,7 +374,6 @@ def superimpose_cylinder(
     assert isinstance(center_y, (int, float)), f"center_y is not a number: type {type(center_y)}."
     assert isinstance(num_sides, int), f"num_sides is not an integer: type {type(num_sides)}."
     assert num_sides >= 3, f"num_sides is less than 3: value {num_sides}."  
-
     
     # 3D Points 
     theta = np.linspace(0, 2 * np.pi, num_sides, endpoint=False)

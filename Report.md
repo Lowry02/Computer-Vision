@@ -2,11 +2,6 @@
 
 Authors: Lorenzo Cusin – Giacomo Serafini – Pietro Terribile
 
-**AI use**
-In this project we used AI tools to:
-- write the documentation of the functions in the code;
-- ??(altro?)
-
 # Project 1 — Camera Calibration
 
 ## Introduction
@@ -25,25 +20,16 @@ where:
 
 It is required to calibrate the camera (thus finding the unique K and the pair $[R | t]$ for each image) by using the Zhang's procedure, which is based on a key principle: instead of starting from a single image and collecting from that $n$ non co-planar points to get the correspondences as required by DLT, start from taking at least three pictures of a plane from different positions in the space, such that it is possible to establish a mathematical relationship, known as homography (a matrix $H$), between the known 3D plane in the scene (the checkerboard) and its 2D perspective projection onto the image plane.
 
-In our case we are provided with 81 images of a checkerboard, our calibration pattern, where each image is taken from a different point in the World reference frame. The checkerboard is composed by a grid of $(8,11)$ reference corners whose coordinates will be used to estimate the parameters.
+In our case we are provided with 81 images of a checkerboard, our calibration pattern, where each image is taken from a different point in the World reference frame. The checkerboard is composed of a grid of $(8,11)$ reference corners whose coordinates will be used to estimate the parameters.
 
-In fact their World and Image coordinates are sufficient to estimate $H$. The first ones are easily derived by fixing the World reference orgin into a point in the checkerboard, in our case the bottom-left corner, and knowing the length of the squares' side; the latter ones, instead, are simply their location in pixels, which can be easily computed using the `findChessboardCorners` OpenCV function (we also used `cornerSubPix` to improve the accuracy of the location). After collecting these data, a system of equation is built following the DLT method and considering the 3D plane to have equation $Z=0$:
+In fact their World and Image coordinates are sufficient to estimate $H$: the first ones are easily derived by fixing the World reference orgin into a point in the checkerboard, in our case the bottom-left corner, and knowing the length of the squares' sides; the latter ones, instead, are simply their location in pixels, which can be easily computed using the `findChessboardCorners` OpenCV function (we also used `cornerSubPix` to improve the accuracy of the location). After collecting the data, a system of equation is built following the DLT method and considering the 3D plane to have equation $Z=0$:
 
 $$
 A_ih = 0
 $$
 
 where:
-- $A_i$ are the coefficients of the equations derived by the corner $i$ of the image and whose entries are:
-
-$$
-\begin{bmatrix}
-x & y & 1 & 0 & 0 & 0 & -ux & -uy & -u \\
-0 & 0 & 0 & x & y & 1 & -vx & -vy & -v
-\end{bmatrix}
-$$
-
-  with $(x,y,1)$ as world homogeneous coordinates and $(u,v,1)$ as image homogeneous coordinates;
+- $A_i$ are the coefficients of the equations derived by the corner $i$ of the image and whose entries are: $$ \begin{bmatrix} x & y & 1 & 0 & 0 & 0 & -ux & -uy & -u \\ 0 & 0 & 0 & x & y & 1 & -vx & -vy & -v \end{bmatrix} $$ with $(x,y,1)$ as world homogeneous coordinates and $(u,v,1)$ as image homogeneous coordinates;
 - $h$ is a vector of size 9 that contains the entries of the matrix $H$.
 
 All the $A_i$  are stacked together and the overdetermined system solution is solved by means of Singular Value Decomposition (practically, the solution is the last column of the obtained matrix V). The resulting matrix $H$ is a 3x3 matrix (since the plane has equation $Z=0$, the third component is cut off and basically $H$ 's entries are the first, second and fourth columns of $P$).
@@ -72,14 +58,15 @@ h_2 = \lambda K r_2
 \begin{cases} 
 r_1 = \frac{1}{\lambda} K^{-1} h_1 \\ 
 r_2 = \frac{1}{\lambda} K^{-1} h_2 
-\end{cases}$$Then, Zhang imposed the rotational constraints to this formulation of $H$. Thus:$$\begin{cases} 
+\end{cases}$$
+Then, Zhang imposed the rotational constraints to this formulation of $H$. Thus:$$\begin{cases} 
 r_1^\top r_2 = 0 \\ 
 r_1^\top r_1 = r_2^\top r_2 
 \end{cases} \xrightarrow{} 
 \begin{cases} 
 h_1^\top (K K^\top)^{-1} h_2 = 0 \\ 
 h_1^\top (K K^\top)^{-1} h_1 = h_2^\top (K K^\top)^{-1} h_2 
-\end{cases}$$And $B = (K K^\top)^{-1}$ is imposed. Notice that $B$ is symmetric, so it has 6 unknown entries. These are stacked in a vector $b = [B_{11}, B_{12}, B_{22}, B_{13}, B_{23}, B_{33}]^\top$.Now, taking all the 81 planes and the respective homographies, we get 162 constraints on the same $B$. To solve the previous system of equations in $B$ we relied on the support vector $v$, since it is easy to check that, for $i,j \in \{1,2\} $, $h_i^\top B h_j$ can be written as the dot product $v_{ij}^\top b$, where$$v_{ij} = \begin{bmatrix}
+\end{cases}$$And $B = (K K^\top)^{-1}$ is imposed. Notice that $B$ is symmetric, so it has 6 unknown entries. These are stacked in a vector $b = [B_{11}, B_{12}, B_{22}, B_{13}, B_{23}, B_{33}]^\top$. Now, taking all the 81 planes and the respective homographies, we get 162 constraints on the same $B$. To solve the previous system of equations in $B$, we relied on the support vector $v$, since it is easy to check that, for $i,j \in \{1,2\} $, $h_i^\top B h_j$ can be written as the dot product $v_{ij}^\top b$, where$$v_{ij} = \begin{bmatrix}
 H_{1i}H_{1j} \\
 H_{1i}H_{2j} + H_{2i}H_{1j} \\
 H_{2i}H_{2j} \\
@@ -88,7 +75,7 @@ H_{3i}H_{2j} + H_{2i}H_{3j} \\
 H_{3i}H_{3j}
 \end{bmatrix}$$
 
-In such way the constraints for a single image become: 
+Thus, the constraints for a single image become: 
 
 $$
 \begin{bmatrix} 
@@ -112,7 +99,8 @@ Where $$\lambda = 1 / \| K^{-1}h_1 \| = 1 / \| K^{-1}h_2 \| $$ and $\times$ repr
 Because of noise, the recovered matrix $R = [r_1, r_2, r_3]$ may not orthogonal. To find the closest orthogonal matrix $R'$ in the Frobenius norm, Singular Value Decomposition is performed on the estimated $R$: if $R = U \Sigma V^\top$, then the refined rotation matrix would be $R' = UV^\top$.
 
 ### Editor's note
-When we faced the third task of the project, we observed that for some immages the cylinder was facing downward instead of upward. Since this happened for a few planes, we tought that this event was happening due to measurement noise when recovering the extrinsic parameters from the images. Therefore we forced the $t$ vector's component corresponding to $z$ to be positive , before computing the rotation vectors $r_1$, $r_2$ and $r_3$:
+
+When we faced the third task of the project, we observed that for some immages the cylinder was facing downward instead of upward. Since this happened for a few planes, we tought that this event was happening due to measurement noise when recovering the extrinsic parameters from the images. Therefore, the following check is implemented, which consequently changes both the translation vector and the rotation matrix:
 ```python
   if t[2] < 0:
      t = -t
@@ -121,58 +109,51 @@ When we faced the third task of the project, we observed that for some immages t
 After this was implemented, the superimposition worked as expected.
 
 ## Task 2 - Total Reprojection Error
-This code computes the reprojection error for a single calibration image (index 1). It retrieves the image path, rotation matrix R1, and translation vector t1 from pre-computed extrinsic parameters. It calculates the projection matrix P using the intrinsic matrix K. For each detected corner in the image, it determines the corresponding world coordinates on the checkerboard plane, projects them back to image coordinates using P, and computes the Euclidean distance between observed and projected points. It prints the total error, mean error per corner, and normalized errors. Finally, it loads the image, draws red circles at the projected corner locations, and displays the image.
-
 
 For this task we are required to choose one of the calibration images and compute the total reprojection
-error, i.e. the distance between the projections (coordinates) of the measured image points and the projections estimated by the geometric model of the camera (perspective projection matrix $P$).
+error, that is, the distance between the projections (coordinates) of the measured image points and the projections estimated by the geometric model of the camera (perspective projection matrix $P$).
 
-First of all, we selected an image from which retrieve its extrinsics parameters and with that we built matrix $P$. Now with that, we projected the 3D world points of the checkerboard onto the 2D image plane. At this point, we computed the total reprojection error with the ($u,v$) coordinates that  `findChessboardCorners` found previously.
+First of all, we selected an image from which to retrieve its extrinsics parameters and with that we built the matrix $P$. With that, we projected the 3D world points of the checkerboard onto the 2D image plane and then we computed the total reprojection error between them and the ($u,v$) coordinates that `findChessboardCorners` previously found.
 The computations performed follow this formula:
 
 $$
 \epsilon(P) = \sum_{i=1}^{n} \left( \frac{p_1^\top m_{(i)}}{p_3^\top m_{(i)}} - u_{(i)} \right)^2 + \left( \frac{p_2^\top m_{(i)}}{p_3^\top m_{(i)}} - v_{(i)} \right)^2
 $$
 
-We decided to prints the total error, mean error per corner, and normalized errors (with respect to image's resolution, to compare with the results obtained in task 6):
-The results we got for image 1, shown as an example, were the following: 
+We decided to print the total error and the mean error per corner, and we used the results we got from `rgb_1.png` as an example:
   -  Error: 41.28
   -  Mean Error Per Corner: 0.47
-  -  Normalized Error: 0.04
-  -  Normalized Mean Error Per Corner: 0.0005
 
+![Results from Image 1](imgs_for_CV_project/red_dots.png)
 
+The second data is the most interesting: a value of 0.47 means that, on average, the points that the geometric model predicts are located on the image less than an half of a pixel away from their actual position.
 
+### Editor's note
 
-<div style="
-  width: 100%;
-  text-align: center;
-  margin: 2em 0 3em 0;
-">
-  <img src="imgs_for_CV_project/red_dots.png"
-       alt="Chessboard calibration pattern"
-       style="display: block; margin: 0 auto; width: 800px;">
-  <div style="margin-top: 0.8em; font-style: italic;">
-    Figure 1: Projected corners after calibration.
-  </div>
-</div>
-
-The second data is the most interesting: a value of 0.47 means that, on average, the points that the geometric model predicts are located on the image less than an half of a pixel away from their actual position. This is considered a good result overall, meaning that the camera model is geometrically accurate.
+In the notebook, it is possible to see the so-called "normalized" error, which takes into consideration the image resolution. It will be discussed in more detail in *Task 6*, where it will be of greater interest.
 
 ## Task 3 - Superimposing a Cylinder
 
 The next task requires to superimpose an object, in this case a cylinder, on 25 checkerboards and to visualize the correctness of the previous computations and results. 
-To complete the task, we defined a function that creates a 3D cylinder and renders it onto a specific image. First, it generates a set of 3D points in homogeneous coordinates based on a provided radius, height, and center position ($x, y$) on the world plane. The cylinder is approximated using a user-defined number of sides and vertical slices. Then, using the camera's projection matrix $P$, these 3D points are mapped onto the 2D image plane. Finally, the function uses OpenCV's `polylines` function to draw the cylinder's structure.
+To complete the task, we defined a function that creates a 3D cylinder and renders it onto a specific image. First, it generates a set of 3D points in homogeneous coordinates based on a provided radius, height, and center position ($x, y$) on the world plane. To be more precise, the cylinder's bases circles are approximated by $n$ straight lines, parameter that can be tuned by the user. The same thing is applied to the sides of the cylinder, meaning that users can define the number of vertical slices that plot the side surface. Then, using the camera projection matrix $P$, these 3D points are mapped onto the 2D image plane. Finally, the function uses OpenCV's `polylines` to draw the cylinder's structure.
 
 ![Example of a projected cylinder](imgs_for_CV_project/cylinder.png)
 
-Observing the results, we noticed that when the slope of the plane is evident to the human eye, the cylinder is correctly inclined with the plane. When the surface is slightly sloped, so much so that it is imperceptible to the naked eye, it is not to the model and the cylinder superimposed is yet inclined. Here we report three cases of interest of our observations.
+Observing the results, we noticed that when the slope of the plane is evident to the human eye, the cylinder is correctly inclined with the plane. Whereas, when the surface is slightly sloped, so much so that it is imperceptible to the naked eye, it is not to the model and the superimposed cylinder is yet inclined. Here we report three cases of interest of our observations.
+
+In most of the images, we noticed that the cylinders are correctly superimposed. In some cases, though, especially when the camera seems to be parallel to the checkerboard, the superimposition appears slightly wrong: we suppose that this problem is due to the fact that, during the estimation phase of the extrinsic parameters, the model is wrongly estimating the pose of the camera, ever so slightly that the superimposition appears wrong to the naked eye. Again, this is just a supposition, as we cannot fully explain how it behaves so well in most of the images but slightly poor in others, and we even questioned if our eyes were the ones being wrong while the model correctly assumed the angle of the checkerboard.
+
+This is just an example of how good it can actually superimpose the cylinder:
 
 ![Superimposition works fine](imgs_for_CV_project/good_cylinder.png)
+
+Whereas here we can see how the angle of the superimposed cylinder appears to be wrong (at least to us):
 
 ![Superimposition seems off](imgs_for_CV_project/bad_cylinder.png)
 
 ![Superimposition worst case](imgs_for_CV_project/worst_cylinder.png)
+
+ADD FULL 25 IMAGES
 
 ## Task 4 - Standard Deviation of the Principal Point
 
@@ -188,7 +169,7 @@ $$
 
 To perform the estimation, a statistical approach is used: several batches of images of size $n\_images \in \{a, \dots, b\}$ are randomly sampled and the standard deviation of $(u_0, v_0)$ is computed for each batch size. We think that this approach is more fair with respect to the combinatorial one, in which all the possible combinations of batches of dimension $n\_images$ are considered to compute the standard deviation. In fact, fixing the number of samples to $n\_samples$ permits to the first approach to create the same number of batches for each size, making the comparison more trustable. This key point is not present in the combinatorial one, as there are more combination of $n$ images than $n+1$. Moreover, the computation is more lightweight, making the code faster to execute. 
 
-In what follows, we can see the results obtained by executing the previous explained approach using $n\_samples = 100$. Since the minimum number of images required to compute the camera intrinsic with the Zhang's method is $3$ and $20$ images are enough to show the standard deviation trend, $n\_images \in \{3, \dots, 20\}$ is selected:
+In what follows, we can see the results obtained by executing the explained approach using $n\_samples = 100$. Since the minimum number of images required to compute the camera intrinsic with the Zhang's method is $3$ and $20$ images are enough to show the standard deviation trend, $n\_images \in \{3, \dots, 20\}$ is selected:
 
 ![Standard Deviation vs N Images](imgs_for_CV_project/std_vs_nimages.png)
 
@@ -197,9 +178,9 @@ The uncertainty decreases as the number of images increases: this is an expected
 ## Task 5 - Comparing the Estimated $R,t$ Pairs
 
 In this task it is required to compare the obtained extrinsic parameters $R$ and $t$ with the provided ground truth. The following methods are used to compute the errors:
-- rotation matrix $R$ (**Rotation Error**): given two rotation matrices $R_A$ and $R_B$, the error is defined as:
+- **Rotation Error**: given two rotation matrices $R_A$ and $R_B$, the error is defined as:
   $$|\theta| = \left|arccos\left(\frac{tr(R_A R_B) - 1}{2}\right)\right|$$
-- translation vector $t$ (**Translation Error**): the error is the Euclidean norm of the difference between the two vectors. 
+- **Translation Error**: the error is the Euclidean norm of the difference between the two vectors
 
 The ground truth is provided for only five images and its $t$ vectors are estimated in meters rather than millimeters. To account for the scale mismatch, the ground truth is multiplied by $1000$.
 
@@ -207,15 +188,15 @@ Here are the obtained results:
 
 ![Ground truth comparison](imgs_for_CV_project/ground_truth_comparison.png)
 
-In both cases, the error seems constant for each image. The Translation Error is around $10$ millimeters and it is probably due to the noise present in the estimation process. The Rotation Error, instead, needs a careful analysis. In fact, it is around $\pi = 3.14$ which represent a rotation of $180°$. This phenomena usually happens when the reference system (world or image) of the two cameras are defined differently, for instance with the axes $x$ and $y$ inverted. Because of that, a further investigation is needed.
+In both cases, the error seems constant for each image. The Translation Error is around $10$ millimeters and it is probably due to the noise present in the estimation process. The Rotation Error, instead, needs a careful analysis. In fact, it is around $\pi = 3.14$ which represent a rotation of $180°$. This phenomenon usually happens when the reference system (world or image) of the two models are defined differently, for instance with the axes $x$ and $y$ inverted. Because of that, a further investigation is needed.
 
-First of all, let's see how a cylinder is projected using the ground truth parameters. If the problem is due to the definition of the reference system, this test should be enough to make it visible. Here an example with the image `rgb_0.png` is shown. The respective $R$ and $t$ from the ground truth parameters are used, while the $K$ estimated in Task 1 is selected. A cylinder centered at $(0,0)$ is then projected.
+First of all, let's see how a cylinder is projected using the ground truth parameters. If the problem is due to the definition of the reference system, this test should be enough to make it visible. Here, an example with the image `rgb_0.png` is shown: the respective $R$ and $t$ from the ground truth parameters are used, while the $K$ estimated in Task 1 is selected. A cylinder centered at $(0,0)$ is then projected.
 
 ![Cylinder with ground truth parameters](imgs_for_CV_project/cylinder_ground_truth_params.png)
 
 It is evident that:
 1. the center $(0,0)$ is not precisely located. This may be caused by the two different estimation processes used to derive $K$, $R$ and $t$. This behaviour is assumed to be normal;
-2. the cylinder is projected reversed with respect to our way of projecting, e.g. it is growing away from the camera. This seems to confirm our hypothesis.
+2. the cylinder is projected reversed with respect to our way of projecting, that is, it is growing away from the camera. This seems to confirm our hypothesis.
 
 Let's try to demonstrate the last point estimating our $R$s and $t$s using $x$ and $y$ inverted. To do that, the function `get_homography` is edited as follow:
 
@@ -251,26 +232,26 @@ Now the Rotation Error is around $0.02rad = 1°$: this definitely confirm our hy
 
 ## Task 6 - Our Own Calibration 
 
-It is asked to calibrate a new camera and retrace the previous steps: in our case, our camera smartphone is used. Firstly, $30$ pictures of a $(11, 18)$ checkerboard are taken and then a copy of the previous code is created and executed. The images dimension is $4080$x$3072$.
+It is asked to calibrate a new camera and retrace the previous steps: in our case, our camera smartphone is used. Firstly, $30$ pictures of a $(11, 18)$ checkerboard are taken and then a copy of the previous code is created and executed. The images' dimensions are $4080\times3072$.
 
-Since the theory and implementation details are described above, here only the results are discussed. Let's break them down point by point:
+Since theory and implementation details are described above, here only the results are discussed. Let's break them down point by point:
 1. **Zhang's Calibration method**
 
     The obtained matrix $K$ is:
     
     $$
         K = \begin{bmatrix} 
-        \alpha_u = 3258.001 & s = 7.425 & u_0=2039.796 \\ 
-        0 & \alpha_vs = 3246.147 & v_0 = 1412.099 \\ 
+        \alpha_u = 3258.001 & \alpha_u cot(\theta) = 7.425 & u_0=2039.796 \\ 
+        0 & \alpha_v / sin(\theta) = 3246.147 & v_0 = 1412.099 \\ 
         0 & 0 & 1 
         \end{bmatrix}
     $$
 
-    Since $\alpha_u \approx \alpha_v$, the sensor pixel shape can be assumed to be a square. The angle between the axis $u$ and $v$, represented by $s$, is small and can be neglected. The pricipal point $(u_0, v_0)$ is vertically shifted with respect to $(\frac{4080}{2}=2040, \frac{3072}{2} = 1536)$, the expected one in an ideal camera. Even if the presence of misalignment between sensor and lenses may cause it, it is also important to notice that in modern smartphones the image captured by the sensor is not the one shown to the user. In fact, post-processing is generally applied, including also image cropping. This may also explain the notable difference in the vertical coordinate.
+    The angle between the axis $u$ and $v$, represented by $\theta$, is approximately $90°$, thus we can consider the axes $u$ and $v$ to be perpendicular. The pricipal point $(u_0, v_0)$ is vertically shifted with respect to the expected one in an ideal camera, which in our case would be $(\frac{4080}{2}=2040, \frac{3072}{2} = 1536)$. Since $\alpha_u \approx \alpha_v$, the sensor pixel shape can be assumed to be a square. Even if the presence of misalignment between sensor and lenses may cause it, it is also important to notice that in modern smartphones the image captured by the sensor is not the one shown to the user. In fact, post-processing is generally applied, including image cropping, which may also explain the notable difference in the vertical coordinate.
 
 2. **Total Reprojection Error**
    
-    The total reprojection error obtained is $1185.65$, with a mean error per corner equal to $6.97$. Even if these values are extremely higher with respect to the one previously obtained in the project (respectively $41.28$ and $0.47$), it is important to notice that the different pixel density present in the two images can influence the perception of the error. In fact, the same pixel error is more evident in the image with lower pixel density.
+    The total reprojection error obtained is $1185.65$, with a mean error per corner equal to $6.97$. Even if these values are extremely higher with respect to the one previously obtained in the project (respectively $41.28$ and $0.47$), it is important to notice that the different pixel density present in the two analysed images can influence the perception of the error. In fact, the same pixel error is more evident in the image with lower pixel density.
 
     To perform a fair comparison, the following normalized error is computed:
 
@@ -284,7 +265,7 @@ Since the theory and implementation details are described above, here only the r
     - $(width, height)$ are the dimensions of the image;
     - $n\_corners$ is the number of projected corners.
 
-    In this way, each error is weighted with the respective dimension of the image, obtaining an adimensional value:
+    In this way, each error is weighted by the respective dimension of the image, obtaining an adimensional value:
     - Old images: $0.0010$;
     - New images: $0.0009$.
 
@@ -321,21 +302,19 @@ $$\sum_{i = 1}^n\sum_{j = 1}^m ||m_{ij} - \hat m(A, R_i, t_i, M_j)||^2$$
 
 where $\hat m(A, R_i, t_i, M_j)$ is the projection of point $M_j$ in image $i$.
 Thus, the optimisation minimises the sum of squared errors over all images and points: $\min_\theta \sum_{i, j}||m_{ij} - \hat m(A, R_i, t_i, M_j)||^2$, where $\theta$ is the full parameter vector: 
-$$\theta = \{\alpha_u, \gamma, u_0, \alpha_v, v_0, r_1, \ldots, r_N, t_1, \ldots, t_N \}$$
-??(se non sbaglio r è composto sempre solo da 3 elementi, quindi invece di $r_1 \dots r_N$ metterei $r_1 \dots r_3$.)
+$$\theta = \{\alpha_u, \gamma, u_0, \alpha_v, v_0, r_1, \ldots, r_n, t_1, \ldots, t_n \}$$
 where:
 - $K = \begin{bmatrix} \alpha_u & \gamma & u_0 \\ 0 & \alpha_v & v_0 \\ 0 & 0 & 1 \end{bmatrix}$ 
-- $\bold{r}$ is the rotation vector in axis-angle (Rodrigues) form
-- $\bold{t}$ is the translation vector
+- $\bold{r}_i$ is the rotation vector in axis-angle (Rodrigues) form of the $i^{th}$ image, $i \in \{1, \ldots, n \}$
+- $\bold{t}_i$ is the translation vector of the $i^{th}$ image, $i \in \{1, \ldots, n \}$
 
 In order to minimise our objective, we used, as suggested, the Lebenberg-Marquardt algorithm, which is conveniently implemented in the `scipy.optimize` package. Rotations are converted between matrix and axis-angle representations using Rodrigues' formula, which was implemented from scratch in the `get_rot_axis_from_R` and `get_R_from_axis` functions. So, all we did was applying the least-squares method while minimising the residuals in order to obtain the refined parameters.
 
-After convergence, the reprojection error was evaluated, as usual, on the image indexed $1$:
+After convergence, the reprojection error was evaluated, as usual, on `rgb_1.png`:
 - **Total Reprojection Error:** 26.31
 - **Mean Error per Corner:** 0.30
 
 Comparing these results with the ones obtained in the Exercise 3, we can see a clear improvement: we reduced the total error from 41.28 to 26.31 and the mean error per corner from 0.41 to 0.30. We can therefore conclude that this process worked well, and it refined all the parameters of the camera, both the extrinsic and the intrinsic ones.
-??(DA AGGIUNGERE L'IMMAGINE? NON MI SEMBRA MOLTO SIGNIFICATIVA, non credo si vedrebbero molte differenze) -> @@(Sono d'accordo che non sia significativa, penso che gli errori bastino)
 
 ## Task 8 - Radial Distortion Compensation
 
@@ -349,29 +328,28 @@ where $u, v$ are the ideal projections (in absence of radial distortion), $\hat 
 
 $$r_d^2 = \left(\frac{u - u_0}{\alpha_u}\right)^2 + \left(\frac{v - v_0}{\alpha_v}\right)^2$$
 
-The procedure starts by basically following the initial one: we do not consider distortion and so we estimate our parameters via homographies. This provides an initial estimate of the camera parameters under the ideal pinhole assumption.  
+The procedure starts by basically following the approach seen in task one: we do not consider distortion and so we estimate our parameters via homographies. This provides an initial estimate of the camera parameters under the ideal pinhole assumption.  
 Given the estimated intrinsic matrix $K$ and projection matrices $P_i$, the distortion coefficients $k_1$ and $k_2$ are estimated by solving a linear least-squares problem: for each image, we append the equation system, thus obtaining an overdetermined system: 
 
 $$A \begin{bmatrix} k_1 \\ k_2 \end{bmatrix} = b$$
 
-After estimating all the initial parameters, $K^0, R_i^0, t_i^0, P_i^0 \text{ and } k_1^0, k_2^0$, we had to refine them. To do so, we again applied the Levenberg-Marquardt algorithm to perform a nonlinear reprojection error minimisation. The optimised parameter vector included the intrinsic parameters ($\alpha_u, \alpha_v, u_0, v_0$), the radial distortion coefficients ($k_1, k_2$), the rotation and the translation vectors for each image. Again, minimising the sum of squared residuals corresponds to a Maximum Likelihood Estimation of all camera parameters, which, if we re-used Zhang's notation, would be:
+After estimating all the initial parameters, $K^0, R_i^0, t_i^0, P_i^0 \text{ and } k_1^0, k_2^0$, we had to refine them. To do so, we applied again the Levenberg-Marquardt algorithm to perform a non-linear reprojection error minimisation. The optimised parameters vector included the intrinsic parameters ($\alpha_u, \alpha_v, u_0, v_0$), the radial distortion coefficients ($k_1, k_2$), the rotation and the translation vectors for each image (the rotation vectors were obtained via the Rodrigues' formula). Again, minimising the sum of squared residuals corresponds to a Maximum Likelihood Estimation of all camera parameters, which, if we re-used Zhang's notation, would be:
 
 $$\sum_{i = 1}^n \sum_{j = 1}^m ||m_{ij} - \hat m(A, k_1, k_2, R_i, t_i, M_j)||^2$$
 
 It is important to note that in this case the intrinsic parameter $\gamma$ was set to 0, so it was not optimised during the procedure.
 
-??(AGGIUNGERE RISULTATI? QUALI? semplicemente un print dei parametri refined?) -> @@(Secondo me i print risulterebbero un po' 'buttati li'. Siccome la descrizione che fai è prettamente teorica, se ci sono delle parti di codice degne di nota potresti inserirle. In generale concluderei dicendo "lasciamo l'analisi dei risultati ottenuti all'esercizio positivo")
+The analysis of the results using this model will be covered in the following exercise.
 
 ## Task 9 - Total Reprojection Error w/ & w/o Radial Distortion Compensation
 
-The purpose of the last exercise is to quantitavely evaluate the impact of radial distortion compensation. To do so, we compared the total and mean reprojection errors of the standard pinhole camera model, with no distortion, and of the radial distortion-aware model.  
-The first model was obviously based on the parameters estimated using Zhang's method, where radial distortion was not considered, whereas the second model was based on the parameters obtained and refined in Exercise 8.
+The purpose of the last exercise is to quantitatively evaluate the impact of radial distortion compensation. To do so, we compared the total and mean reprojection errors of the standard pinhole camera model, with no distortion, and of the radial distortion-aware model. The first model was obviously based on the parameters estimated using Zhang's method, where radial distortion was not considered, whereas the second model was based on the parameters obtained and refined in Exercise 8.
 
-For each observed corner $(u_{obs}, v_{obs})$ and corresponding projected point $(u_{proj}, v_{proj})$, the reprojection error is computed as the Euclidean distance in pixel space: 
+For each observed corner $(u_{obs}, v_{obs})$ and corresponding projected point $(u_{proj}, v_{proj})$, the reprojection error is computed as the squared Euclidean distance in pixel space: 
 
-$$err = \sqrt{(u_{obs} - u_{proj})^2 + (v_{obs} - v_{proj})^2}$$
+$$err = (u_{obs} - u_{proj})^2 + (v_{obs} - v_{proj})^2$$
 
-The total reprojection error is obtained by summing the error over all points and images, while the mean reprohection error is normalised by the total number of corners.
+The total reprojection error is obtained by summing the error over all points and images, while the mean reprojection error is normalised by the total number of corners.
 
 **Results:**
 - Model without radial distortion:
@@ -385,8 +363,13 @@ The mean reprojection error is reduced by more than a factor of 6, from approxim
 
 To conclude, we can see how effective radial distortion compensation in camera calibration is: while Zhang's initial estimates are valid, ignoring lens distortion leads to significant residual errors. By taking it into consideration, and refining all variables through reprojection error minimisation, we achieved far better and more accurate results, and consequently a more realistic camera model.
 
+# Appendix
+
+**AI Use:**
+- Writing the documentation of the functions in the code;
+- Writing Assertion Errors
+
 # References
+
 - Zhang, Zhengyou. A Flexible New Technique for Camera Calibration a Flexible New Technique for Camera Calibration. Vol. 10, 1999, www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr98-71.pdf.
 - Wikipedia Contributors. “Axis–Angle Representation.” Wikipedia, Wikimedia Foundation, 8 May 2020, https://en.wikipedia.org/wiki/Axis%E2%80%93angle_representation
-
-??(avete in mente altre references?)
