@@ -32,7 +32,7 @@ where:
 - $A_i$ are the coefficients of the equations derived by the corner $i$ of the image and whose entries are: $$ \begin{bmatrix} x & y & 1 & 0 & 0 & 0 & -ux & -uy & -u \\ 0 & 0 & 0 & x & y & 1 & -vx & -vy & -v \end{bmatrix} $$ with $(x,y,1)$ as world homogeneous coordinates and $(u,v,1)$ as image homogeneous coordinates;
 - $h$ is a vector of size 9 that contains the entries of the matrix $H$.
 
-All the $A_i$  are stacked together and the overdetermined system solution is solved by means of Singular Value Decomposition (practically, the solution is the last column of the obtained matrix V). The resulting matrix $H$ is a 3x3 matrix (since the plane has equation $Z=0$, the third component is cut off and basically $H$ 's entries are the first, second and fourth columns of $P$).
+All the $A_i$  are stacked together and the overdetermined system solution is solved by means of Singular Value Decomposition (basically, the solution is the last column of the obtained matrix V). The resulting matrix $H$ is a 3x3 matrix (since the plane has equation $Z=0$, the third component is cut off and basically $H$ 's entries are the first, second and fourth columns of $P$).
 
 After the estimation of the homography for each image, to estimate the camera parameters another system of equation must be solved. Due to the strict relation between homography and perspective projection, Zhang proceeded to relate the homography with the rigid matrix that is part of $P$. Observing that:
 
@@ -243,8 +243,7 @@ Since theory and implementation details are described above, here only the resul
 
 2. **Total Reprojection Error**
    
-    [TODO: data updated, so check the comment]
-    The total reprojection error computed on ⁠`our_calibration_images/rgb_1.jpg ⁠` is $9795.74$, with a mean error per corner equal to $57.62$. Even if these values are extremely higher with respect to the one previously obtained in the project (respectively $23.44$ and $0.27$), it is important to notice that the different pixel density present in the two analysed images can influence the perception of the error. In fact, the same pixel error is more evident in the image with lower pixel density.
+    The total reprojection error computed on ⁠`our_calibration_images/rgb_1.jpg` is $9795.74$, with a mean error per corner equal to $57.62$. Even if these values are extremely higher with respect to the one previously obtained in the project (respectively $23.44$ and $0.27$), it is important to notice that the different pixel density present in the two analysed images can influence the perception of the error. In fact, the same pixel error is more evident in the image with lower pixel density.
 
     To perform a fair comparison, the following normalized error is computed:
 
