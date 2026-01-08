@@ -122,12 +122,12 @@ $$
 
 We decided to print the total error and the mean error per corner, and we used the results we got from `rgb_1.png` as an example:
   -  Error: 23.44
-  -  Mean Error Per Corner: 0.01
+  -  Mean Error Per Corner: 0.27
 
 ![Results from Image 1](imgs_for_CV_project/red_dots.png)
 
 [TODO: data updated, so check the comment]
-The second data is the most interesting: a value of 0.01 means that, on average, the points that the geometric model predicts are located on the image less than an half of a pixel away from their actual position.
+The second data is the most interesting: a value of 0.27 means that, on average, the points that the geometric model predicts are located on the image less than an half of a pixel away from their actual position.
 
 ### Editor's note
 
@@ -253,7 +253,7 @@ Since theory and implementation details are described above, here only the resul
 2. **Total Reprojection Error**
    
     [TODO: data updated, so check the comment]
-    The total reprojection error obtained is $1185.65$, with a mean error per corner equal to $6.97$. Even if these values are extremely higher with respect to the one previously obtained in the project (respectively $23.44$ and $0.01$), it is important to notice that the different pixel density present in the two analysed images can influence the perception of the error. In fact, the same pixel error is more evident in the image with lower pixel density.
+    The total reprojection error obtained is $9795.74$, with a mean error per corner equal to $57.62$. Even if these values are extremely higher with respect to the one previously obtained in the project (respectively $23.44$ and $0.27$), it is important to notice that the different pixel density present in the two analysed images can influence the perception of the error. In fact, the same pixel error is more evident in the image with lower pixel density.
 
     To perform a fair comparison, the following normalized error is computed:
 
@@ -268,8 +268,8 @@ Since theory and implementation details are described above, here only the resul
     - $n\_corners$ is the number of projected corners.
 
     In this way, each error is weighted by the respective dimension of the image, obtaining an adimensional value:
-    - Old images: $0.0010$;
-    - New images: $0.0009$.
+    - Old images: $0.000016021$;
+    - New images: $0.000015806$.
 
     *(The error is computed by collectively considering all corners across the images, e.g. $8 \times 11 \times 81 = 7128$ corners for the old images and $10 \times 17 \times 30 = 5100$ for the new ones.)*
   
@@ -357,7 +357,7 @@ The total reprojection error is obtained by summing the error over all points an
 **Results:**
 - Model without radial distortion:
   - Total Error: 8385.83
-  - Mean Error: 0.834
+  - Mean Error: 1.176
 - Model with radial distortion:
   - Total Error: 167.63
   - Mean Error: 0.024
