@@ -363,7 +363,7 @@ The total reprojection error is obtained by summing the error over all points an
   - Mean Error: 0.024
 
 [TODO: data updated, so check the comment]
-The mean reprojection error is reduced by more than a factor of 6, from approximately 0.83 px to 0.02 px. The total reprojection error, on the other hand, decreases by over 80%, indicating a substantial improvement.
+The mean reprojection error is reduced by more than a factor of 6, from approximately 1.18 px to 0.02 px. The total reprojection error, on the other hand, decreases by over 80%, indicating a substantial improvement.
 
 To conclude, we can see how effective radial distortion compensation in camera calibration is: while Zhang's initial estimates are valid, ignoring lens distortion leads to significant residual errors. By taking it into consideration, and refining all variables through reprojection error minimisation, we achieved far better and more accurate results, and consequently a more realistic camera model.
 
