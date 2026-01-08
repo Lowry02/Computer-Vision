@@ -339,7 +339,11 @@ $$\sum_{i = 1}^n \sum_{j = 1}^m ||m_{ij} - \hat m(A, k_1, k_2, R_i, t_i, M_j)||^
 
 It is important to note that in this case the intrinsic parameter $\gamma$ was set to 0, so it was not optimised during the procedure.
 
-The analysis of the results using this model will be covered in the following exercise.
+As usual, we tested our newly optimised model on `rgb_1.png`, and these are the results that we obtained:
+- **Total Reprojection Error:** 3.49
+- **Mean Error per Corner:** 0.04
+
+As we can see, we clearly improved our model. Results will be more deeply discussed in the next *Task*.
 
 ## Task 9 - Total Reprojection Error w/ & w/o Radial Distortion Compensation
 
