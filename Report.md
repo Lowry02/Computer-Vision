@@ -126,7 +126,7 @@ We decided to print the total error and the mean error per corner, and we used t
 
 ![Results from Image 1](imgs_for_CV_project/corners_projection.png)
 
-The second data is the most interesting: a value of 0.27 means that, on average, the points that the geometric model predicts are located on the image less than an half of a pixel away from their actual position.
+The second data is the most interesting: a value of 0.27 means that, on average, the points that the geometric model predicts are located about a quarter of a pixel away from their actual position.
 
 ## Task 3 - Superimposing a Cylinder
 
@@ -298,8 +298,8 @@ Thus, the optimisation minimises the sum of squared errors over all images and p
 $$\theta = \{\alpha_u, \gamma, u_0, \alpha_v, v_0, r_1, \ldots, r_n, t_1, \ldots, t_n \}$$
 where:
 - $K = \begin{bmatrix} \alpha_u & \gamma & u_0 \\ 0 & \alpha_v & v_0 \\ 0 & 0 & 1 \end{bmatrix}$ 
-- $\bold{r}_i$ is the rotation vector in axis-angle (Rodrigues) form of the $i^{th}$ image, $i \in \{1, \ldots, n \}$
-- $\bold{t}_i$ is the translation vector of the $i^{th}$ image, $i \in \{1, \ldots, n \}$
+- ${r}_i$ is the rotation vector in axis-angle (Rodrigues) form of the $i^{th}$ image, $i \in \{1, \ldots, n \}$
+- ${t}_i$ is the translation vector of the $i^{th}$ image, $i \in \{1, \ldots, n \}$
 
 In order to minimise our objective, we used, as suggested, the Lebenberg-Marquardt algorithm, which is conveniently implemented in the `scipy.optimize` package. Rotations are converted between matrix and axis-angle representations using Rodrigues' formula, which was implemented from scratch in the `get_rot_axis_from_R` and `get_R_from_axis` functions. So, all we did was applying the least-squares method while minimising the residuals in order to obtain the refined parameters.
 
