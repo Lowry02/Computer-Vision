@@ -265,7 +265,7 @@ def project(points:np.ndarray, P:np.ndarray) -> np.ndarray:
 def compute_reprojection_error(all_observed_corners, all_projected_corners):
     """
     Computes the reprojection error between observed and projected corner points.
-    The reprojection error is calculated as the Euclidean distance between each 
+    The reprojection error is calculated as the squared Euclidean distance between each 
     observed corner point and its corresponding projected corner point. The function 
     returns both the total error and the average error per point.
     Args:
