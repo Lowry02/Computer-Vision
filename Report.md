@@ -141,7 +141,7 @@ This is just an example of how good it can actually superimpose the cylinder:
 
 ![Superimposition works fine](imgs_for_CV_project/cylinder.png)
 
-Whereas here we can see how the angle of the superimposed cylinder appears to be wrong (at least to us):
+Whereas here we can see how the angle of the superimposed cylinder appears to be wrong:
 
 ![Superimposition seems off](imgs_for_CV_project/wrong_cylinders.png)
 
@@ -364,7 +364,8 @@ To conclude, we can see how effective radial distortion compensation in camera c
 
 **AI Use:**
 - Writing the documentation of the functions in the code;
-- Writing Assertion Errors
+- Writing Assertion Errors;
+- README.md in the Github Repository.
 
 # References
 
