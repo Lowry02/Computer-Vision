@@ -96,11 +96,11 @@ $$
 
 Where $$\lambda = 1 / \| K^{-1}h_1 \| = 1 / \| K^{-1}h_2 \| $$ and $\times$ represents the cross product.
 
-Because of noise, the recovered matrix $R = [r_1, r_2, r_3]$ may not orthogonal. To find the closest orthogonal matrix $R'$ in the Frobenius norm, Singular Value Decomposition is performed on the estimated $R$: if $R = U \Sigma V^\top$, then the refined rotation matrix would be $R' = UV^\top$.
+Because of noise, the recovered matrix $R = [r_1, r_2, r_3]$ may not be orthogonal. To find the closest orthogonal matrix $R'$ in the Frobenius norm, Singular Value Decomposition is performed on the estimated $R$: if $R = U \Sigma V^\top$, then the refined rotation matrix would be $R' = UV^\top$.
 
 ### Editor's note
 
-When we faced the third task of the project, we observed that for some immages the cylinder was facing downward instead of upward. Since this happened for a few planes, we tought that this event was happening due to measurement noise when recovering the extrinsic parameters from the images. Therefore, the following check is implemented, which consequently changes both the translation vector and the rotation matrix:
+When we faced the third task of the project, we observed that for some images the cylinder was facing downward instead of upward. Since this happened for a few planes, we tought that this event was happening due to measurement noise when recovering the extrinsic parameters from the images. Therefore, the following check is implemented, which consequently changes both the translation vector and the rotation matrix:
 ```python
   if t[2] < 0:
      t = -t
@@ -113,7 +113,7 @@ After this was implemented, the superimposition worked as expected.
 For this task we are required to choose one of the calibration images and compute the total reprojection
 error, that is, the distance between the projections (coordinates) of the measured image points and the projections estimated by the geometric model of the camera (perspective projection matrix $P$).
 
-First of all, we selected an image from which to retrieve its extrinsics parameters and with that we built the matrix $P$. With that, we projected the 3D world points of the checkerboard onto the 2D image plane and then we computed the total reprojection error between them and the ($u,v$) coordinates that `findChessboardCorners` previously found.
+First of all, we selected an image from which to retrieve its extrinsics parameters and we built the matrix $P$. With that, we projected the 3D world points of the checkerboard onto the 2D image plane and then we computed the total reprojection error between them and the ($u,v$) coordinates that `findChessboardCorners` previously found.
 The computations performed follow this formula:
 
 $$
@@ -128,18 +128,12 @@ We decided to print the total error and the mean error per corner, and we used t
 
 The second data is the most interesting: a value of 0.27 means that, on average, the points that the geometric model predicts are located on the image less than an half of a pixel away from their actual position.
 
-### Editor's note
-
-In the notebook, it is possible to see the so-called "normalized" error, which takes into consideration the image resolution. It will be discussed in more detail in *Task 6*, where it will be of greater interest.
-
 ## Task 3 - Superimposing a Cylinder
 
 The next task requires to superimpose an object, in this case a cylinder, on 25 checkerboards and to visualize the correctness of the previous computations and results. 
 To complete the task, we defined a function that creates a 3D cylinder and renders it onto a specific image. First, it generates a set of 3D points in homogeneous coordinates based on a provided radius, height, and center position ($x, y$) on the world plane. To be more precise, the cylinder's bases circles are approximated by $n$ straight lines, parameter that can be tuned by the user. The same thing is applied to the sides of the cylinder, meaning that users can define the number of vertical slices that plot the side surface. Then, using the camera projection matrix $P$, these 3D points are mapped onto the 2D image plane. Finally, the function uses OpenCV's `polylines` to draw the cylinder's structure.
 
 ![25 projected cylinders](imgs_for_CV_project/25_cylinders.png)
-
-Observing the results, we noticed that when the slope of the plane is evident to the human eye, the cylinder is correctly inclined with the plane. Whereas, when the surface is slightly sloped, so much so that it is imperceptible to the naked eye, it is not to the model and the superimposed cylinder is yet inclined. Here we report three cases of interest of our observations.
 
 In most of the images, we noticed that the cylinders are correctly superimposed. In some cases, though, especially when the camera seems to be parallel to the checkerboard, the superimposition appears slightly wrong: we suppose that this problem is due to the fact that, during the estimation phase of the extrinsic parameters, the model is wrongly estimating the pose of the camera, ever so slightly that the superimposition appears wrong to the naked eye. Again, this is just a supposition, as we cannot fully explain how it behaves so well in most of the images but slightly poor in others, and we even questioned if our eyes were the ones being wrong while the model correctly assumed the angle of the checkerboard.
 
@@ -191,7 +185,7 @@ First of all, let's see how a cylinder is projected using the ground truth param
 ![Cylinder with ground truth parameters](imgs_for_CV_project/cylinder_ground_truth_params.png)
 
 It is evident that:
-1. the center $(0,0)$ is not precisely located. This may be caused by the two different estimation processes used to derive $K$, $R$ and $t$. This behaviour is assumed to be normal;
+1. the center $(0,0)$ is not precisely located (red dot). This may be caused by the two different estimation processes used to derive $K$, $R$ and $t$. This behaviour is assumed to be normal;
 2. the cylinder is projected reversed with respect to our way of projecting, that is, it is growing away from the camera. This seems to confirm our hypothesis.
 
 Let's try to demonstrate the last point estimating our $R$s and $t$s using $x$ and $y$ inverted. To do that, the function `get_homography` is edited as follow:
@@ -244,12 +238,13 @@ Since theory and implementation details are described above, here only the resul
         \end{bmatrix}
     $$
 
-    The angle between the axis $u$ and $v$, represented by $\theta$, is approximately $90°$, thus we can consider the axes $u$ and $v$ to be perpendicular. The pricipal point $(u_0, v_0)$ is vertically shifted with respect to the expected one in an ideal camera, which in our case would be $(\frac{4080}{2}=2040, \frac{3072}{2} = 1536)$. Since $\alpha_u \approx \alpha_v$, the sensor pixel shape can be assumed to be a square. Even if the presence of misalignment between sensor and lenses may cause it, it is also important to notice that in modern smartphones the image captured by the sensor is not the one shown to the user. In fact, post-processing is generally applied, including image cropping, which may also explain the notable difference in the vertical coordinate.
+    The angle between the axis $u$ and $v$, represented by $\theta$, is approximately $90°$, thus we can consider the axes $u$ and $v$ to be perpendicular. The pricipal point $(u_0, v_0)$ is vertically shifted with respect to the expected one in an ideal camera, which in our case would be $(\frac{4080}{2}=2040, \frac{3072}{2} = 1536)$. Even if the presence of misalignment between sensor and lenses may cause it, it is also important to notice that in modern smartphones the image captured by the sensor is not the one shown to the user. In fact, post-processing is generally applied, including image cropping, which may also explain the notable difference in the vertical coordinate.
+    Finally, since $\alpha_u \approx \alpha_v$, the sensor pixel shape can be assumed to be a square.
 
 2. **Total Reprojection Error**
    
     [TODO: data updated, so check the comment]
-    The total reprojection error obtained is $9795.74$, with a mean error per corner equal to $57.62$. Even if these values are extremely higher with respect to the one previously obtained in the project (respectively $23.44$ and $0.27$), it is important to notice that the different pixel density present in the two analysed images can influence the perception of the error. In fact, the same pixel error is more evident in the image with lower pixel density.
+    The total reprojection error computed on ⁠`our_calibration_images/rgb_1.jpg ⁠` is $9795.74$, with a mean error per corner equal to $57.62$. Even if these values are extremely higher with respect to the one previously obtained in the project (respectively $23.44$ and $0.27$), it is important to notice that the different pixel density present in the two analysed images can influence the perception of the error. In fact, the same pixel error is more evident in the image with lower pixel density.
 
     To perform a fair comparison, the following normalized error is computed:
 
@@ -259,17 +254,16 @@ Since theory and implementation details are described above, here only the resul
 
     where:
     - $(\hat u_i,\hat v_i)$ are the coordinates of the projected corner;
-    - $(u_i, v_i)$ are the ground truth coordinates of the corner;
+    - $(u_i, v_i)$ are the observed coordinates of the corner;
     - $(width, height)$ are the dimensions of the image;
     - $n\_corners$ is the number of projected corners.
 
-    In this way, each error is weighted by the respective dimension of the image, obtaining an adimensional value:
+    In this way, each error is weighted by the respective dimension of the image, obtaining an adimensional value. The error is computed by collectively considering all corners across the images, e.g. $8 \times 11 \times 81 = 7128$ corners for the old images and $10 \times 17 \times 30 = 5100$ for the new ones. Here are the results:
     - Old images: $0.000016021$;
     - New images: $0.000015806$.
-
-    *(The error is computed by collectively considering all corners across the images, e.g. $8 \times 11 \times 81 = 7128$ corners for the old images and $10 \times 17 \times 30 = 5100$ for the new ones.)*
   
-    The error is basically the same. Here is an example of the corners projection:
+    The error is basically the same, so we can state that the two models have the same projection accuracy.
+    An example of corners projection is shown:
 
     ![Corners Projection - Phone image](./imgs_for_CV_project/phone_image_corners_projection.png)
 
@@ -278,6 +272,8 @@ Since theory and implementation details are described above, here only the resul
     The projection of the cylinder appears as expected in all the 25 images:
 
     ![Cylinder Projection - Phone image](./imgs_for_CV_project/phone_image_25_cylinders.png)
+
+    No wrong projections, as the ones discussed in Task 2, are noticed.
 
 4. **Standard deviation of principal point**
 
