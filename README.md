@@ -16,7 +16,7 @@ This repository contains the implementation and experiments for **Camera Calibra
 
 ## Report
 
-The full theoretical background, methodology, results, and discussion are available in the <a href="https://docsify-this.net/?basePath=https://raw.githubusercontent.com/Lowry02/Computer-Vision/main&homepage=Report.md&sidebar=true#/" target="_blank">project report</a> (also available in [PDF](./Report.pdf)).
+The full theoretical background, methodology, results, and discussion are available in the [project report](https://docsify-this.net/?basePath=https://raw.githubusercontent.com/Lowry02/Computer-Vision/main&homepage=Report.md&sidebar=true#/) (also available in [PDF](./Report.pdf)).
 
 ## Authors
 
