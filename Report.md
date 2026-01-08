@@ -126,7 +126,6 @@ We decided to print the total error and the mean error per corner, and we used t
 
 ![Results from Image 1](imgs_for_CV_project/red_dots.png)
 
-[TODO: data updated, so check the comment]
 The second data is the most interesting: a value of 0.27 means that, on average, the points that the geometric model predicts are located on the image less than an half of a pixel away from their actual position.
 
 ### Editor's note
@@ -154,7 +153,7 @@ Whereas here we can see how the angle of the superimposed cylinder appears to be
 
 ![Superimposition worst case](imgs_for_CV_project/worst_cylinder.png)
 
-ADD FULL 25 IMAGES
+TODO: ADD FULL 25 IMAGES
 
 ## Task 4 - Standard Deviation of the Principal Point
 
@@ -228,8 +227,9 @@ Basically, the coordinates of the checkerboard's corners are defined with $x$ an
 
 Now the Rotation Error is around $0.02rad = 1°$: this definitely confirm our hypothesis. As for the case of the Translation Error, we assess this last difference to the noise present in the estimation process.
 
+### Editor's note
 
-*Clearly, keeping the change to the `get_homography` function means defining a world reference system in which the projected objects would grow away from the camera. We think that this definition is less intuitive, so we decide to restore `get_homography` to its initial version.*
+Clearly, keeping the change to the `get_homography` function means defining a world reference system in which the projected objects would grow away from the camera. We think that this definition is less intuitive, so we decide to restore `get_homography` to its initial version.
 
 ## Task 6 - Our Own Calibration 
 
@@ -316,7 +316,6 @@ After convergence, the reprojection error was evaluated, as usual, on `rgb_1.png
 - **Total Reprojection Error:** 10.12
 - **Mean Error per Corner:** 0.11
 
-[TODO: data updated, so check the comment]
 Comparing these results with the ones obtained in the Exercise 3, we can see a clear improvement: we reduced the total error from 23.44 to 10.12 and the mean error per corner from 0.27 to 0.11. We can therefore conclude that this process worked well, and it refined all the parameters of the camera, both the extrinsic and the intrinsic ones.
 
 ## Task 8 - Radial Distortion Compensation
@@ -366,7 +365,6 @@ The total reprojection error is obtained by summing the error over all points an
   - Total Error: 167.63
   - Mean Error: 0.024
 
-[TODO: data updated, so check the comment]
 The mean reprojection error is reduced by more than a factor of 6, from approximately 1.18 px to 0.02 px. The total reprojection error, on the other hand, decreases by over 80%, indicating a substantial improvement.
 
 To conclude, we can see how effective radial distortion compensation in camera calibration is: while Zhang's initial estimates are valid, ignoring lens distortion leads to significant residual errors. By taking it into consideration, and refining all variables through reprojection error minimisation, we achieved far better and more accurate results, and consequently a more realistic camera model.
