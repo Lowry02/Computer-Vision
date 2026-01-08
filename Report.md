@@ -124,7 +124,7 @@ We decided to print the total error and the mean error per corner, and we used t
   -  Error: 23.44
   -  Mean Error Per Corner: 0.27
 
-![Results from Image 1](imgs_for_CV_project/red_dots.png)
+![Results from Image 1](imgs_for_CV_project/corners_projection.png)
 
 The second data is the most interesting: a value of 0.27 means that, on average, the points that the geometric model predicts are located on the image less than an half of a pixel away from their actual position.
 
@@ -137,7 +137,7 @@ In the notebook, it is possible to see the so-called "normalized" error, which t
 The next task requires to superimpose an object, in this case a cylinder, on 25 checkerboards and to visualize the correctness of the previous computations and results. 
 To complete the task, we defined a function that creates a 3D cylinder and renders it onto a specific image. First, it generates a set of 3D points in homogeneous coordinates based on a provided radius, height, and center position ($x, y$) on the world plane. To be more precise, the cylinder's bases circles are approximated by $n$ straight lines, parameter that can be tuned by the user. The same thing is applied to the sides of the cylinder, meaning that users can define the number of vertical slices that plot the side surface. Then, using the camera projection matrix $P$, these 3D points are mapped onto the 2D image plane. Finally, the function uses OpenCV's `polylines` to draw the cylinder's structure.
 
-![Example of a projected cylinder](imgs_for_CV_project/cylinder.png)
+![25 projected cylinders](imgs_for_CV_project/25_cylinders.png)
 
 Observing the results, we noticed that when the slope of the plane is evident to the human eye, the cylinder is correctly inclined with the plane. Whereas, when the surface is slightly sloped, so much so that it is imperceptible to the naked eye, it is not to the model and the superimposed cylinder is yet inclined. Here we report three cases of interest of our observations.
 
@@ -145,15 +145,11 @@ In most of the images, we noticed that the cylinders are correctly superimposed.
 
 This is just an example of how good it can actually superimpose the cylinder:
 
-![Superimposition works fine](imgs_for_CV_project/good_cylinder.png)
+![Superimposition works fine](imgs_for_CV_project/cylinder.png)
 
 Whereas here we can see how the angle of the superimposed cylinder appears to be wrong (at least to us):
 
-![Superimposition seems off](imgs_for_CV_project/bad_cylinder.png)
-
-![Superimposition worst case](imgs_for_CV_project/worst_cylinder.png)
-
-TODO: ADD FULL 25 IMAGES
+![Superimposition seems off](imgs_for_CV_project/wrong_cylinders.png)
 
 ## Task 4 - Standard Deviation of the Principal Point
 
@@ -279,9 +275,9 @@ Since theory and implementation details are described above, here only the resul
 
 3. **Superimposing a cylinder**
 
-    The projection of the cylinder appears as expected in all the 25 images. An example is shown:
+    The projection of the cylinder appears as expected in all the 25 images:
 
-    ![Cylinder Projection - Phone image](./imgs_for_CV_project/phone_image_cylinder_projection.png)
+    ![Cylinder Projection - Phone image](./imgs_for_CV_project/phone_image_25_cylinders.png)
 
 4. **Standard deviation of principal point**
 

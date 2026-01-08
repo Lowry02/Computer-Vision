@@ -419,11 +419,11 @@ def superimpose_cylinder(
     # base
     base_start_idx = projected_points.shape[0] - 2 * num_sides
     base_points_proj = projected_points[base_start_idx : base_start_idx + num_sides]
-    cv2.polylines(img, [base_points_proj], isClosed=True, color=(0, 0, 255), thickness=line_thinkness)
+    cv2.polylines(img, [base_points_proj], isClosed=True, color=(0, 0, 255), thickness=2*line_thinkness)
     
     # top
     top_points_proj = projected_points[base_start_idx + num_sides : ]
-    cv2.polylines(img, [top_points_proj], isClosed=True, color=(0, 255, 0), thickness=line_thinkness)
+    cv2.polylines(img, [top_points_proj], isClosed=True, color=(0, 255, 0), thickness=2*line_thinkness)
     
     # base center
     center_projection = project(np.array([center_x, center_y, 0, 1]), P)[0]
