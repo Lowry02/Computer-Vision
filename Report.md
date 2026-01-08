@@ -121,12 +121,13 @@ $$
 $$
 
 We decided to print the total error and the mean error per corner, and we used the results we got from `rgb_1.png` as an example:
-  -  Error: 41.28
-  -  Mean Error Per Corner: 0.47
+  -  Error: 23.44
+  -  Mean Error Per Corner: 0.01
 
 ![Results from Image 1](imgs_for_CV_project/red_dots.png)
 
-The second data is the most interesting: a value of 0.47 means that, on average, the points that the geometric model predicts are located on the image less than an half of a pixel away from their actual position.
+[TODO: data updated, so check the comment]
+The second data is the most interesting: a value of 0.01 means that, on average, the points that the geometric model predicts are located on the image less than an half of a pixel away from their actual position.
 
 ### Editor's note
 
@@ -251,7 +252,8 @@ Since theory and implementation details are described above, here only the resul
 
 2. **Total Reprojection Error**
    
-    The total reprojection error obtained is $1185.65$, with a mean error per corner equal to $6.97$. Even if these values are extremely higher with respect to the one previously obtained in the project (respectively $41.28$ and $0.47$), it is important to notice that the different pixel density present in the two analysed images can influence the perception of the error. In fact, the same pixel error is more evident in the image with lower pixel density.
+    [TODO: data updated, so check the comment]
+    The total reprojection error obtained is $1185.65$, with a mean error per corner equal to $6.97$. Even if these values are extremely higher with respect to the one previously obtained in the project (respectively $23.44$ and $0.01$), it is important to notice that the different pixel density present in the two analysed images can influence the perception of the error. In fact, the same pixel error is more evident in the image with lower pixel density.
 
     To perform a fair comparison, the following normalized error is computed:
 
@@ -311,10 +313,11 @@ where:
 In order to minimise our objective, we used, as suggested, the Lebenberg-Marquardt algorithm, which is conveniently implemented in the `scipy.optimize` package. Rotations are converted between matrix and axis-angle representations using Rodrigues' formula, which was implemented from scratch in the `get_rot_axis_from_R` and `get_R_from_axis` functions. So, all we did was applying the least-squares method while minimising the residuals in order to obtain the refined parameters.
 
 After convergence, the reprojection error was evaluated, as usual, on `rgb_1.png`:
-- **Total Reprojection Error:** 26.31
-- **Mean Error per Corner:** 0.30
+- **Total Reprojection Error:** 10.12
+- **Mean Error per Corner:** 0.11
 
-Comparing these results with the ones obtained in the Exercise 3, we can see a clear improvement: we reduced the total error from 41.28 to 26.31 and the mean error per corner from 0.41 to 0.30. We can therefore conclude that this process worked well, and it refined all the parameters of the camera, both the extrinsic and the intrinsic ones.
+[TODO: data updated, so check the comment]
+Comparing these results with the ones obtained in the Exercise 3, we can see a clear improvement: we reduced the total error from 23.44 to 10.12 and the mean error per corner from 0.27 to 0.11. We can therefore conclude that this process worked well, and it refined all the parameters of the camera, both the extrinsic and the intrinsic ones.
 
 ## Task 8 - Radial Distortion Compensation
 
@@ -353,13 +356,14 @@ The total reprojection error is obtained by summing the error over all points an
 
 **Results:**
 - Model without radial distortion:
-  - Total Error: 5945.02
+  - Total Error: 8385.83
   - Mean Error: 0.834
 - Model with radial distortion:
-  - Total Error: 960.08
-  - Mean Error: 0.135
+  - Total Error: 167.63
+  - Mean Error: 0.024
 
-The mean reprojection error is reduced by more than a factor of 6, from approximately 0.83 px to 0.14 px. The total reprojection error, on the other hand, decreases by over 80%, indicating a substantial improvement.
+[TODO: data updated, so check the comment]
+The mean reprojection error is reduced by more than a factor of 6, from approximately 0.83 px to 0.02 px. The total reprojection error, on the other hand, decreases by over 80%, indicating a substantial improvement.
 
 To conclude, we can see how effective radial distortion compensation in camera calibration is: while Zhang's initial estimates are valid, ignoring lens distortion leads to significant residual errors. By taking it into consideration, and refining all variables through reprojection error minimisation, we achieved far better and more accurate results, and consequently a more realistic camera model.
 
